@@ -200,6 +200,97 @@
   .settings-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
   #importFileInput{ display:none; }
   footer{ text-align:center; padding:26px 16px 10px; color:var(--ink-soft); font-size:12px; }
+
+  /* ============================================================
+     SEARCH BAR (Assets tab — text + QR scan)
+     ============================================================ */
+  .search-bar{ display:flex; gap:8px; margin-bottom:14px; }
+  .search-bar .search-wrap{ position:relative; flex:1; }
+  .search-bar .search-wrap .ic{ position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:14px; color:var(--ink-soft); pointer-events:none; }
+  .search-bar input[type=text].search-input{ padding-left:32px; }
+  .search-bar .btn{ flex:0 0 auto; white-space:nowrap; }
+  .asset-toolbar{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+  .search-hint{ font-size:12px; color:var(--ink-soft); margin:-6px 0 14px; }
+  .search-hint b{ color:var(--navy-deep); }
+
+  /* Searchable asset picker (used in Assign / Maintenance forms) */
+  .asset-picker{ position:relative; }
+  .asset-picker .search-wrap{ margin:0; }
+  .asset-picker-dropdown{
+    display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30;
+    background:var(--card); border:1.5px solid var(--line); border-radius:var(--radius-sm);
+    box-shadow:var(--shadow-lift); max-height:220px; overflow-y:auto; padding:5px;
+  }
+  .asset-picker-dropdown.show{ display:block; }
+  .asset-picker-option{
+    padding:8px 10px; border-radius:6px; cursor:pointer; font-size:13.5px;
+    display:flex; justify-content:space-between; gap:8px; align-items:baseline;
+  }
+  .asset-picker-option:hover, .asset-picker-option.hi{ background:var(--bg-deep); }
+  .asset-picker-option .op-tag{ font-family:var(--font-mono); font-weight:700; color:var(--navy-deep); font-size:12.5px; }
+  .asset-picker-option .op-name{ color:var(--ink-soft); font-size:12.5px; flex:1; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .asset-picker-empty{ padding:10px; font-size:12.5px; color:var(--ink-soft); text-align:center; }
+
+  /* Per-row QR trigger */
+  .icon-btn.qr-btn{ color:var(--navy); }
+
+  /* ============================================================
+     QR MODAL — label preview + handover document preview
+     ============================================================ */
+  .qr-modal .modal{ max-width:340px; text-align:center; }
+  .qr-modal .modal.wide{ max-width:560px; text-align:left; }
+  .qr-canvas-wrap{ display:flex; justify-content:center; padding:14px; background:#fff; border:1px solid var(--line); border-radius:var(--radius-sm); margin-bottom:12px; }
+  .qr-label-tag{ font-family:var(--font-mono); font-weight:700; color:var(--navy-deep); font-size:15px; margin-bottom:2px; }
+  .qr-label-name{ font-size:12.5px; color:var(--ink-soft); margin-bottom:14px; }
+
+  /* Camera scan modal */
+  .scan-video-wrap{ position:relative; background:#000; border-radius:var(--radius-sm); overflow:hidden; margin-bottom:12px; aspect-ratio:1/1; }
+  .scan-video-wrap video{ width:100%; height:100%; object-fit:cover; display:block; }
+  .scan-frame{ position:absolute; inset:14%; border:2.5px solid #ffffffcc; border-radius:12px; box-shadow:0 0 0 999px rgba(0,0,0,0.28); pointer-events:none; }
+  .scan-status{ font-size:12.5px; color:var(--ink-soft); text-align:center; margin-bottom:12px; min-height:16px; }
+
+  /* ============================================================
+     PRINT AREA — populated dynamically, only visible when printing
+     ============================================================ */
+  #printArea{ display:none; }
+
+  .print-label-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .print-label{
+    border:1px dashed #888; border-radius:6px; padding:8px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; break-inside:avoid; page-break-inside:avoid;
+  }
+  .print-label img{ width:78px; height:78px; }
+  .print-label .plt{ font-family:var(--font-mono); font-weight:700; font-size:11.5px; margin-top:4px; }
+  .print-label .pln{ font-size:9.5px; color:#555; margin-top:1px; }
+  .print-label .plc{ font-size:9px; color:#777; }
+
+  .handover-doc{ max-width:720px; margin:0 auto; font-family:var(--font-body); color:#111; }
+  .handover-doc .hd-head{ display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid var(--navy); padding-bottom:12px; margin-bottom:18px; }
+  .handover-doc .hd-company{ font-family:var(--font-display); font-weight:900; font-size:20px; color:var(--navy-deep); }
+  .handover-doc .hd-tagline{ font-size:12px; color:#555; font-style:italic; }
+  .handover-doc .hd-title{ text-align:right; }
+  .handover-doc .hd-title h2{ font-family:var(--font-display); font-size:17px; letter-spacing:0.5px; color:var(--navy-deep); }
+  .handover-doc .hd-title .hd-ref{ font-size:11.5px; color:#555; font-family:var(--font-mono); margin-top:2px; }
+  .handover-doc h4{ font-size:13px; text-transform:uppercase; letter-spacing:0.6px; color:var(--navy); border-bottom:1px solid #ccc; padding-bottom:4px; margin:18px 0 10px; }
+  .handover-doc table{ width:100%; border-collapse:collapse; font-size:13.5px; }
+  .handover-doc table td{ padding:5px 4px; vertical-align:top; }
+  .handover-doc table td.k{ color:#555; width:38%; }
+  .handover-doc table td.v{ font-weight:700; color:#111; }
+  .handover-doc ol{ font-size:12.5px; color:#333; padding-left:18px; margin:0; }
+  .handover-doc ol li{ margin-bottom:5px; }
+  .handover-doc .hd-foot{ display:flex; justify-content:space-between; align-items:flex-start; margin-top:36px; gap:24px; }
+  .handover-doc .hd-sign{ flex:1; }
+  .handover-doc .hd-sign .line{ border-top:1px solid #333; margin-top:46px; padding-top:5px; font-size:11.5px; color:#333; }
+  .handover-doc .hd-qr{ text-align:center; }
+  .handover-doc .hd-qr img{ width:74px; height:74px; }
+  .handover-doc .hd-qr .cap{ font-size:9.5px; color:#777; margin-top:3px; font-family:var(--font-mono); }
+
+  @media print{
+    body *{ visibility:hidden; }
+    .app, .toast, .modal-backdrop{ display:none !important; }
+    #printArea, #printArea *{ visibility:visible !important; }
+    #printArea{ display:block !important; position:absolute; left:0; top:0; width:100%; padding:14px; }
+  }
 </style>
 </head>
 <body>
@@ -305,6 +396,18 @@
         </div>
       </div>
 
+      <div class="search-bar">
+        <div class="search-wrap">
+          <span class="ic">🔍</span>
+          <input type="text" id="assetSearchInput" class="search-input" placeholder="Search by tag, name, serial, category, or assigned employee…">
+        </div>
+        <button class="btn ghost" id="scanQrBtn" title="Scan an asset's QR code">📷 Scan QR</button>
+      </div>
+      <div class="asset-toolbar">
+        <button class="btn ghost sm" id="printAllQrBtn">🏷️ Print QR labels</button>
+        <span class="search-hint" id="assetSearchHint" style="display:none; margin:0;"></span>
+      </div>
+
       <div id="assetList"></div>
     </section>
 
@@ -316,9 +419,14 @@
 
       <div class="card" style="margin-bottom:18px;">
         <div class="form-grid">
-          <div class="field-row">
+          <div class="field-row asset-picker">
             <label class="field">Asset</label>
-            <select id="assignAssetSelect"></select>
+            <div class="search-wrap">
+              <span class="ic">🔍</span>
+              <input type="text" id="assignAssetSearch" class="search-input" placeholder="Search asset by tag or name…" autocomplete="off">
+            </div>
+            <input type="hidden" id="assignAssetSelect">
+            <div class="asset-picker-dropdown" id="assignAssetDropdown"></div>
           </div>
           <div class="field-row">
             <label class="field">Assigned to (employee name)</label>
@@ -353,9 +461,14 @@
 
       <div class="card" style="margin-bottom:18px;">
         <div class="form-grid">
-          <div class="field-row">
+          <div class="field-row asset-picker">
             <label class="field">Asset</label>
-            <select id="maintAssetSelect"></select>
+            <div class="search-wrap">
+              <span class="ic">🔍</span>
+              <input type="text" id="maintAssetSearch" class="search-input" placeholder="Search asset by tag or name…" autocomplete="off">
+            </div>
+            <input type="hidden" id="maintAssetSelect">
+            <div class="asset-picker-dropdown" id="maintAssetDropdown"></div>
           </div>
           <div class="field-row">
             <label class="field">Date reported</label>
@@ -437,6 +550,41 @@
   </div>
 </div>
 
+<!-- Single-asset QR label modal -->
+<div class="modal-backdrop qr-modal" id="qrModal">
+  <div class="modal">
+    <h3>Asset QR label</h3>
+    <div class="qr-canvas-wrap"><div id="qrModalCanvas"></div></div>
+    <div class="qr-label-tag" id="qrModalTag"></div>
+    <div class="qr-label-name" id="qrModalName"></div>
+    <div class="actions" style="justify-content:center;">
+      <button class="btn ghost" id="qrModalCloseBtn">Close</button>
+      <button class="btn" id="qrModalPrintBtn">🖨 Print label</button>
+    </div>
+  </div>
+</div>
+
+<!-- Camera-based QR scan / search modal -->
+<div class="modal-backdrop qr-modal" id="scanModal">
+  <div class="modal">
+    <h3>Scan an asset QR code</h3>
+    <div class="scan-video-wrap">
+      <video id="scanVideo" muted playsinline></video>
+      <div class="scan-frame"></div>
+    </div>
+    <div class="scan-status" id="scanStatus"></div>
+    <canvas id="scanCanvas" style="display:none;"></canvas>
+    <div class="actions" style="justify-content:center;">
+      <button class="btn ghost" id="scanModalCloseBtn">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden print area: populated dynamically for QR labels and handover documents -->
+<div id="printArea"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
 <script>
 (function(){
   "use strict";
@@ -471,6 +619,7 @@
   let assignments = loadJSON(LS.assignments, []); // {id, assetId, employee, dept, date, returnedDate}
   let maintenance = loadJSON(LS.maintenance, []); // {id, assetId, date, issue, status, resolvedDate}
   let nextTagNum = loadJSON('itam_nexttag', 1);
+  let assetSearchQuery = '';
 
   function persistAll(){
     saveJSON(LS.settings, settings);
@@ -597,11 +746,34 @@
 
   function renderAssets(){
     const list = document.getElementById('assetList');
+    const hint = document.getElementById('assetSearchHint');
     if(assets.length === 0){
       list.innerHTML = `<div class="empty-state"><span class="ic">💻</span><div class="en">No assets yet — add your first asset above</div></div>`;
+      hint.style.display = 'none';
       return;
     }
-    list.innerHTML = [...assets].sort((a,b)=> a.tag.localeCompare(b.tag)).map(a=>{
+
+    const q = assetSearchQuery.trim().toLowerCase();
+    let visible = [...assets].sort((a,b)=> a.tag.localeCompare(b.tag));
+    if(q){
+      visible = visible.filter(a=>{
+        const assignment = activeAssignmentFor(a.id);
+        const haystack = [a.tag, a.name, a.category, a.serial, assignment ? assignment.employee : '', assignment ? assignment.dept : '']
+          .filter(Boolean).join(' ').toLowerCase();
+        return haystack.includes(q);
+      });
+      hint.style.display = 'block';
+      hint.innerHTML = `<b>${visible.length}</b> of ${assets.length} asset${assets.length===1?'':'s'} match "${escapeHtml(assetSearchQuery.trim())}"`;
+    } else {
+      hint.style.display = 'none';
+    }
+
+    if(visible.length === 0){
+      list.innerHTML = `<div class="empty-state"><span class="ic">🔍</span><div class="en">No assets match that search</div></div>`;
+      return;
+    }
+
+    list.innerHTML = visible.map(a=>{
       const assignment = activeAssignmentFor(a.id);
       return `<div class="item-row">
         <div class="info">
@@ -611,6 +783,7 @@
         </div>
         <span class="status-pill ${statusClass(a.status)}">${a.status}</span>
         <div class="row-actions">
+          <button class="icon-btn qr-btn" data-qr="${a.id}" title="View / print QR label">▦</button>
           <button class="icon-btn" data-edit="${a.id}" title="Edit">✎</button>
           <button class="icon-btn danger" data-del="${a.id}" title="Delete">🗑</button>
         </div>
@@ -665,8 +838,13 @@
   document.getElementById('assetCancelEditBtn').addEventListener('click', resetAssetForm);
 
   document.getElementById('assetList').addEventListener('click', (e)=>{
+    const qrId = e.target.closest('[data-qr]');
     const editId = e.target.closest('[data-edit]');
     const delId = e.target.closest('[data-del]');
+    if(qrId){
+      const a = getAsset(qrId.dataset.qr);
+      if(a) openAssetQrModal(a);
+    }
     if(editId){
       const a = getAsset(editId.dataset.edit);
       if(!a) return;
@@ -698,21 +876,250 @@
   });
 
   /* ============================================================
+     SEARCH
+     ============================================================ */
+  document.getElementById('assetSearchInput').addEventListener('input', (e)=>{
+    assetSearchQuery = e.target.value;
+    renderAssets();
+  });
+
+  /* ============================================================
+     QR CODES — per-asset label view/print, bulk label sheet,
+     and camera-based QR search
+     ============================================================ */
+  const QR_PREFIX = 'ITAM-ASSET:';
+
+  function qrTextForAsset(a){ return QR_PREFIX + a.tag; }
+
+  function renderQrInto(el, text, size){
+    el.innerHTML = '';
+    // eslint-disable-next-line no-undef
+    new QRCode(el, { text, width:size, height:size, correctLevel: QRCode.CorrectLevel.M });
+  }
+
+  function qrImgSrcFromContainer(el){
+    const img = el.querySelector('img');
+    const canvas = el.querySelector('canvas');
+    if(img && img.src) return img.src;
+    if(canvas) return canvas.toDataURL('image/png');
+    return '';
+  }
+
+  function openAssetQrModal(a){
+    const backdrop = document.getElementById('qrModal');
+    document.getElementById('qrModalTag').textContent = a.tag;
+    document.getElementById('qrModalName').textContent = a.name;
+    renderQrInto(document.getElementById('qrModalCanvas'), qrTextForAsset(a), 168);
+    backdrop.classList.add('show');
+    document.getElementById('qrModalPrintBtn').onclick = ()=> printSingleLabel(a);
+  }
+  document.getElementById('qrModalCloseBtn').addEventListener('click', ()=>{
+    document.getElementById('qrModal').classList.remove('show');
+  });
+
+  function printSingleLabel(a){
+    const tmp = document.createElement('div');
+    renderQrInto(tmp, qrTextForAsset(a), 220);
+    const src = qrImgSrcFromContainer(tmp);
+    document.getElementById('printArea').innerHTML = `
+      <div class="print-label-grid" style="grid-template-columns:1fr; max-width:260px; margin:0 auto;">
+        <div class="print-label">
+          <img src="${src}" alt="QR code">
+          <div class="plt">${escapeHtml(a.tag)}</div>
+          <div class="pln">${escapeHtml(a.name)}</div>
+          <div class="plc">${escapeHtml(settings.companyName || '')}</div>
+        </div>
+      </div>`;
+    window.print();
+  }
+
+  document.getElementById('printAllQrBtn').addEventListener('click', ()=>{
+    if(assets.length === 0){ toast('No assets to print labels for'); return; }
+    const grid = document.createElement('div');
+    grid.className = 'print-label-grid';
+    assets.forEach(a=>{
+      const cell = document.createElement('div');
+      cell.className = 'print-label';
+      const qrHolder = document.createElement('div');
+      renderQrInto(qrHolder, qrTextForAsset(a), 78);
+      const src = qrImgSrcFromContainer(qrHolder);
+      cell.innerHTML = `
+        <img src="${src}" alt="QR code">
+        <div class="plt">${escapeHtml(a.tag)}</div>
+        <div class="pln">${escapeHtml(a.name)}</div>
+        <div class="plc">${escapeHtml(settings.companyName || '')}</div>`;
+      grid.appendChild(cell);
+    });
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = '';
+    printArea.appendChild(grid);
+    window.print();
+  });
+
+  /* ---- Camera QR scan (search by QR) ---- */
+  let scanStream = null;
+  let scanRAF = null;
+
+  function stopScan(){
+    if(scanRAF) cancelAnimationFrame(scanRAF);
+    scanRAF = null;
+    if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream = null; }
+  }
+
+  async function openScanModal(){
+    const backdrop = document.getElementById('scanModal');
+    const statusEl = document.getElementById('scanStatus');
+    statusEl.textContent = 'Requesting camera access…';
+    backdrop.classList.add('show');
+    const video = document.getElementById('scanVideo');
+    const canvas = document.getElementById('scanCanvas');
+    const ctx = canvas.getContext('2d');
+
+    try{
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    }catch(err){
+      statusEl.textContent = 'Could not access the camera. Check browser permissions, or search by typing the asset tag instead.';
+      return;
+    }
+    video.srcObject = scanStream;
+    await video.play();
+    statusEl.textContent = 'Point the camera at an asset\'s QR label…';
+
+    function tick(){
+      if(!scanStream) return;
+      if(video.readyState === video.HAVE_ENOUGH_DATA){
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        // eslint-disable-next-line no-undef
+        const result = jsQR(imageData.data, imageData.width, imageData.height);
+        if(result && result.data){
+          handleScanResult(result.data);
+          return;
+        }
+      }
+      scanRAF = requestAnimationFrame(tick);
+    }
+    scanRAF = requestAnimationFrame(tick);
+  }
+
+  function closeScanModal(){
+    stopScan();
+    document.getElementById('scanModal').classList.remove('show');
+    const video = document.getElementById('scanVideo');
+    video.pause();
+    video.srcObject = null;
+  }
+
+  function handleScanResult(text){
+    stopScan();
+    let tag = text.startsWith(QR_PREFIX) ? text.slice(QR_PREFIX.length) : text;
+    closeScanModal();
+    const match = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase());
+    document.getElementById('assetSearchInput').value = tag;
+    assetSearchQuery = tag;
+    goToTab('assets');
+    if(match){ toast(`Found: ${match.tag} — ${match.name}`); }
+    else{ toast(`No asset found for code "${tag}"`); }
+  }
+
+  document.getElementById('scanQrBtn').addEventListener('click', openScanModal);
+  document.getElementById('scanModalCloseBtn').addEventListener('click', closeScanModal);
+
+  /* ============================================================
+     SEARCHABLE ASSET PICKER (combobox used by Assign / Maintenance)
+     ============================================================ */
+  function initAssetPicker({ searchId, hiddenId, dropdownId, getEligible }){
+    const search = document.getElementById(searchId);
+    const hidden = document.getElementById(hiddenId);
+    const dropdown = document.getElementById(dropdownId);
+    let hiIndex = -1;
+
+    function matches(){
+      const q = search.value.trim().toLowerCase();
+      const eligible = getEligible();
+      if(!q) return eligible;
+      return eligible.filter(a => (a.tag+' '+a.name+' '+a.category+' '+(a.serial||'')).toLowerCase().includes(q));
+    }
+    function optionsHtml(list){
+      if(list.length === 0) return `<div class="asset-picker-empty">No matching assets</div>`;
+      return list.map(a => `<div class="asset-picker-option" data-id="${a.id}">
+          <span class="op-tag">${escapeHtml(a.tag)}</span><span class="op-name">${escapeHtml(a.name)}</span>
+        </div>`).join('');
+    }
+    function openDropdown(){
+      if(search.disabled) return;
+      dropdown.innerHTML = optionsHtml(matches());
+      dropdown.classList.add('show');
+      hiIndex = -1;
+    }
+    function closeDropdown(){ dropdown.classList.remove('show'); }
+    function highlight(){
+      const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
+      opts.forEach(o=>o.classList.remove('hi'));
+      if(opts[hiIndex]){ opts[hiIndex].classList.add('hi'); opts[hiIndex].scrollIntoView({block:'nearest'}); }
+    }
+    function selectOption(id){
+      const a = getEligible().find(x=>x.id===id);
+      if(!a) return;
+      hidden.value = a.id;
+      search.value = `${a.tag} — ${a.name}`;
+      closeDropdown();
+    }
+
+    search.addEventListener('focus', openDropdown);
+    search.addEventListener('input', ()=>{ hidden.value = ''; openDropdown(); });
+    search.addEventListener('blur', ()=> setTimeout(closeDropdown, 150));
+    search.addEventListener('keydown', (e)=>{
+      const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
+      if(e.key === 'ArrowDown'){ e.preventDefault(); if(!dropdown.classList.contains('show')) openDropdown(); hiIndex = Math.min(hiIndex+1, opts.length-1); highlight(); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); hiIndex = Math.max(hiIndex-1, 0); highlight(); }
+      else if(e.key === 'Enter'){ if(dropdown.classList.contains('show')){ e.preventDefault(); if(hiIndex>=0 && opts[hiIndex]) selectOption(opts[hiIndex].dataset.id); } }
+      else if(e.key === 'Escape'){ closeDropdown(); }
+    });
+    dropdown.addEventListener('mousedown', (e)=>{
+      const opt = e.target.closest('.asset-picker-option');
+      if(!opt) return;
+      e.preventDefault();
+      selectOption(opt.dataset.id);
+    });
+
+    return { reset(){ hidden.value = ''; search.value = ''; closeDropdown(); } };
+  }
+
+  let assignEligibleAssets = [];
+  let maintEligibleAssets = [];
+
+  const assignPicker = initAssetPicker({
+    searchId: 'assignAssetSearch', hiddenId: 'assignAssetSelect', dropdownId: 'assignAssetDropdown',
+    getEligible: ()=> assignEligibleAssets
+  });
+  const maintPicker = initAssetPicker({
+    searchId: 'maintAssetSearch', hiddenId: 'maintAssetSelect', dropdownId: 'maintAssetDropdown',
+    getEligible: ()=> maintEligibleAssets
+  });
+
+  /* ============================================================
      ASSIGNMENTS
      ============================================================ */
   document.getElementById('assignDate').value = todayStr();
 
   function refreshAssignSelect(){
-    const sel = document.getElementById('assignAssetSelect');
-    const available = assets.filter(a => a.status === 'Available');
-    if(available.length === 0){
-      sel.innerHTML = `<option value="">No available assets</option>`;
-      sel.disabled = true;
-      document.getElementById('assignSaveBtn').disabled = true;
+    assignEligibleAssets = assets.filter(a => a.status === 'Available');
+    const search = document.getElementById('assignAssetSearch');
+    const hidden = document.getElementById('assignAssetSelect');
+    const btn = document.getElementById('assignSaveBtn');
+    if(assignEligibleAssets.length === 0){
+      assignPicker.reset();
+      search.placeholder = 'No available assets';
+      search.disabled = true;
+      btn.disabled = true;
     } else {
-      sel.disabled = false;
-      document.getElementById('assignSaveBtn').disabled = false;
-      sel.innerHTML = available.map(a => `<option value="${a.id}">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</option>`).join('');
+      search.disabled = false;
+      btn.disabled = false;
+      search.placeholder = 'Search asset by tag or name…';
+      if(hidden.value && !assignEligibleAssets.find(a=>a.id===hidden.value)) assignPicker.reset();
     }
   }
 
@@ -750,7 +1157,10 @@
               <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
               <div class="meta">${escapeHtml(rec.employee)} &middot; ${escapeHtml(rec.dept)} &middot; since ${fmtDate(rec.date)}</div>
             </div>
-            <button class="btn ghost sm" data-return="${rec.id}">Mark returned</button>
+            <div class="row-actions">
+              <button class="btn ghost sm" data-handover="${rec.id}">🖨 Handover doc</button>
+              <button class="btn ghost sm" data-return="${rec.id}">Mark returned</button>
+            </div>
           </div>`;
         }).join('');
 
@@ -765,11 +1175,14 @@
               <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'} — ${escapeHtml(rec.employee)} (${escapeHtml(rec.dept)})</div>
               <div class="meta">${fmtDate(rec.date)} → returned ${fmtDate(rec.returnedDate)}</div>
             </div>
+            <button class="btn ghost sm" data-handover="${rec.id}">🖨 Handover doc</button>
           </div>`;
         }).join('');
   }
 
   document.getElementById('currentAssignments').addEventListener('click', (e)=>{
+    const handoverBtn = e.target.closest('[data-handover]');
+    if(handoverBtn){ printHandoverDoc(handoverBtn.dataset.handover); return; }
     const btn = e.target.closest('[data-return]');
     if(!btn) return;
     const rec = assignments.find(a=>a.id === btn.dataset.return);
@@ -784,22 +1197,97 @@
     });
   });
 
+  document.getElementById('assignmentHistory').addEventListener('click', (e)=>{
+    const handoverBtn = e.target.closest('[data-handover]');
+    if(handoverBtn) printHandoverDoc(handoverBtn.dataset.handover);
+  });
+
+  /* ============================================================
+     ASSET HANDOVER DOCUMENT — printable record for issuing
+     (or having issued) an asset to an employee
+     ============================================================ */
+  function printHandoverDoc(assignmentId){
+    const rec = assignments.find(a=>a.id === assignmentId);
+    if(!rec){ toast('Could not find that assignment'); return; }
+    const a = getAsset(rec.assetId);
+    if(!a){ toast('Asset record not found'); return; }
+
+    const refNo = 'HO-' + rec.id.toUpperCase();
+    const printArea = document.getElementById('printArea');
+    printArea.innerHTML = `
+      <div class="handover-doc">
+        <div class="hd-head">
+          <div>
+            <div class="hd-company">${escapeHtml(settings.companyName || '')}</div>
+            <div class="hd-tagline">${escapeHtml(settings.tagline || '')}</div>
+          </div>
+          <div class="hd-title">
+            <h2>ASSET HANDOVER DOCUMENT</h2>
+            <div class="hd-ref">Ref: ${escapeHtml(refNo)} &middot; ${fmtDate(rec.date)}</div>
+          </div>
+        </div>
+
+        <h4>Asset details</h4>
+        <table>
+          <tr><td class="k">Asset tag</td><td class="v">${escapeHtml(a.tag)}</td></tr>
+          <tr><td class="k">Name / model</td><td class="v">${escapeHtml(a.name)}</td></tr>
+          <tr><td class="k">Category</td><td class="v">${escapeHtml(a.category)}</td></tr>
+          <tr><td class="k">Serial number</td><td class="v">${escapeHtml(a.serial || '—')}</td></tr>
+          <tr><td class="k">Warranty / AMC ends</td><td class="v">${fmtDate(a.warrantyEnd)}</td></tr>
+        </table>
+
+        <h4>Issued to</h4>
+        <table>
+          <tr><td class="k">Employee name</td><td class="v">${escapeHtml(rec.employee)}</td></tr>
+          <tr><td class="k">Department</td><td class="v">${escapeHtml(rec.dept)}</td></tr>
+          <tr><td class="k">Date of issue</td><td class="v">${fmtDate(rec.date)}</td></tr>
+          <tr><td class="k">Status</td><td class="v">${rec.returnedDate ? 'Returned on ' + fmtDate(rec.returnedDate) : 'Currently in use'}</td></tr>
+        </table>
+
+        <h4>Terms &amp; conditions</h4>
+        <ol>
+          <li>The employee acknowledges receipt of the above asset in good working condition, complete with any accessories issued alongside it.</li>
+          <li>The asset remains the property of ${escapeHtml(settings.companyName || 'the company')} and is issued solely for official use.</li>
+          <li>The employee is responsible for the reasonable care, security, and safekeeping of the asset for the duration of use.</li>
+          <li>Any damage, loss, or malfunction must be reported promptly to the IT department.</li>
+          <li>The asset, along with all accessories, must be returned to the IT department upon request or on separation from the company.</li>
+          <li>Unauthorized repair, modification, or transfer of the asset to another individual is not permitted.</li>
+        </ol>
+
+        <div class="hd-foot">
+          <div class="hd-sign"><div class="line">Issued by — IT Department, ${fmtDate(rec.date)}</div></div>
+          <div class="hd-sign"><div class="line">Received by — ${escapeHtml(rec.employee)}</div></div>
+          <div class="hd-qr">
+            <div id="handoverQrHolder"></div>
+            <div class="cap">${escapeHtml(a.tag)}</div>
+          </div>
+        </div>
+      </div>`;
+
+    renderQrInto(document.getElementById('handoverQrHolder'), qrTextForAsset(a), 74);
+    window.print();
+  }
+
   /* ============================================================
      MAINTENANCE
      ============================================================ */
   document.getElementById('maintDate').value = todayStr();
 
   function refreshMaintSelect(){
-    const sel = document.getElementById('maintAssetSelect');
-    const eligible = assets.filter(a => a.status !== 'Retired' && !openMaintenanceFor(a.id));
-    if(eligible.length === 0){
-      sel.innerHTML = `<option value="">No assets available to log</option>`;
-      sel.disabled = true;
-      document.getElementById('maintSaveBtn').disabled = true;
+    maintEligibleAssets = assets.filter(a => a.status !== 'Retired' && !openMaintenanceFor(a.id));
+    const search = document.getElementById('maintAssetSearch');
+    const hidden = document.getElementById('maintAssetSelect');
+    const btn = document.getElementById('maintSaveBtn');
+    if(maintEligibleAssets.length === 0){
+      maintPicker.reset();
+      search.placeholder = 'No assets available to log';
+      search.disabled = true;
+      btn.disabled = true;
     } else {
-      sel.disabled = false;
-      document.getElementById('maintSaveBtn').disabled = false;
-      sel.innerHTML = eligible.map(a => `<option value="${a.id}">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</option>`).join('');
+      search.disabled = false;
+      btn.disabled = false;
+      search.placeholder = 'Search asset by tag or name…';
+      if(hidden.value && !maintEligibleAssets.find(a=>a.id===hidden.value)) maintPicker.reset();
     }
   }
 
