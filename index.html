@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sri Textiles Pvt Ltd — IT Asset Management</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     DESIGN TOKENS
+     Corporate blue/gray, classic serif type. A single warm
+     "brass thread" tone is reserved only for the asset-tag
+     label component (a nod to woven care-labels), never used
+     elsewhere, so it stays a signature rather than decoration.
+     ============================================================ */
+  :root{
+    --bg:            #EEF1F6;
+    --bg-deep:       #E2E8F1;
+    --card:          #FFFFFF;
+    --line:          #D8DFE8;
+    --ink:           #1E2A3A;
+    --ink-soft:      #5B6B80;
+    --navy:          #1F3B5C;
+    --navy-deep:     #142A44;
+    --steel:         #4C7098;
+    --thread:        #8A6D3B;   /* reserved for asset-tag label only */
+    --thread-bg:     #F6EFDF;
+    --good:          #3F7D52;
+    --bad:           #B0392E;
+    --bad-bg:        #F5DEDA;
+    --warn:          #A9781E;
+    --warn-bg:       #F6EAD0;
+    --shadow:        0 2px 10px rgba(20,42,68,0.07);
+    --shadow-lift:   0 8px 24px rgba(20,42,68,0.14);
+    --radius:        12px;
+    --radius-sm:     8px;
+    --font-display:  'Merriweather', serif;
+    --font-body:     'PT Serif', serif;
+    --font-mono:     'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font-body);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+  }
+  h1,h2,h3,h4{ font-family:var(--font-display); margin:0; color:var(--navy-deep); }
+  button, input, select, textarea{ font-family:inherit; }
+  ::selection{ background:var(--steel); color:#fff; }
+  :focus-visible{ outline:2px solid var(--steel); outline-offset:2px; }
+
+  .app{ max-width:980px; margin:0 auto; padding:0 0 60px; }
+
+  /* ============================================================
+     HEADER — signature: a herringbone weave divider under the
+     header band, referencing woven textile structure while
+     reading as a crisp corporate stripe from a distance.
+     ============================================================ */
+  .app-header{
+    position:relative;
+    padding:34px 24px 44px;
+    text-align:center;
+    background:linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+    color:#F1F5FA;
+    overflow:hidden;
+  }
+  .header-ic{ font-size:30px; margin-bottom:6px; display:block; }
+  .company-name{ font-size:clamp(24px,4.6vw,34px); font-weight:900; letter-spacing:0.2px; }
+  .company-tagline{ margin-top:6px; font-style:italic; font-size:14.5px; color:#C9D6E6; }
+  .weave-divider{ position:absolute; left:0; right:0; bottom:-1px; height:22px; line-height:0; }
+  .weave-divider svg{ width:100%; height:100%; display:block; }
+
+  /* ============================================================
+     TAB NAVIGATION
+     ============================================================ */
+  .tabs{
+    display:flex; gap:4px; padding:12px 12px 0; overflow-x:auto; scrollbar-width:none;
+    background:var(--bg); position:sticky; top:0; z-index:20; border-bottom:1px solid var(--line);
+  }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab-btn{
+    flex:0 0 auto; display:flex; align-items:center; gap:6px;
+    padding:11px 15px 12px; border:none; background:transparent; cursor:pointer;
+    color:var(--ink-soft); border-bottom:3px solid transparent;
+    transition:color .18s ease, border-color .18s ease; font-size:13.5px; font-weight:600;
+  }
+  .tab-btn .ic{ font-size:16px; }
+  .tab-btn:hover{ color:var(--navy-deep); }
+  .tab-btn.active{ color:var(--navy-deep); border-color:var(--steel); }
+
+  main{ padding:20px 16px 0; }
+  .tab-panel{ display:none; animation:fadeIn .25s ease; }
+  .tab-panel.active{ display:block; }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;} }
+  @media (prefers-reduced-motion: reduce){ .tab-panel{ animation:none; } }
+
+  .section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .section-head h2{ font-size:21px; }
+  .section-head .sub{ font-size:12.5px; color:var(--ink-soft); }
+
+  /* ============================================================
+     CARDS / SHARED COMPONENTS
+     ============================================================ */
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; }
+  .grid{ display:grid; gap:14px; }
+  .grid.cols-4{ grid-template-columns:repeat(4,1fr); }
+  @media (max-width:640px){ .grid.cols-4{ grid-template-columns:repeat(2,1fr); } }
+
+  .stat-card{ text-align:center; padding:16px 10px; }
+  .stat-card .num{ font-family:var(--font-display); font-size:25px; font-weight:900; color:var(--navy-deep); }
+  .stat-card .lbl{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+  .btn{
+    display:inline-flex; align-items:center; gap:6px; border:none; border-radius:8px; cursor:pointer;
+    padding:10px 18px; font-size:14px; font-weight:700; background:var(--navy); color:#fff;
+    box-shadow:var(--shadow); transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+  }
+  .btn:hover{ background:var(--navy-deep); box-shadow:var(--shadow-lift); transform:translateY(-1px); }
+  .btn:active{ transform:translateY(0); }
+  .btn.ghost{ background:transparent; color:var(--navy-deep); border:1.5px solid var(--line); box-shadow:none; }
+  .btn.ghost:hover{ background:var(--bg-deep); }
+  .btn.danger{ background:var(--bad); }
+  .btn.danger:hover{ background:#8f2e24; }
+  .btn.sm{ padding:7px 13px; font-size:12.5px; }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; transform:none; }
+
+  label.field{ display:block; font-size:12.5px; color:var(--ink-soft); margin-bottom:5px; font-weight:700; }
+  input[type=text], input[type=number], input[type=date], select, textarea{
+    width:100%; padding:9px 12px; border-radius:var(--radius-sm); border:1.5px solid var(--line);
+    background:#fbfcfe; color:var(--ink); font-size:14.5px; font-family:var(--font-body);
+  }
+  textarea{ resize:vertical; min-height:56px; }
+  .field-row{ margin-bottom:12px; }
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:560px){ .form-grid{ grid-template-columns:1fr; } }
+
+  .item-row{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:12px 14px; border-radius:var(--radius-sm); border:1px solid var(--line);
+    background:var(--card); margin-bottom:8px; flex-wrap:wrap;
+  }
+  .item-row .info{ flex:1; min-width:180px; }
+  .item-row .name{ font-weight:700; color:var(--navy-deep); }
+  .item-row .meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .row-actions{ display:flex; gap:6px; }
+  .icon-btn{
+    border:none; background:var(--bg-deep); color:var(--navy-deep); width:32px; height:32px;
+    border-radius:8px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;
+    transition:background .15s ease;
+  }
+  .icon-btn:hover{ background:var(--line); }
+  .icon-btn.danger{ color:var(--bad); }
+
+  /* Asset tag — the signature "woven label" component */
+  .asset-tag{
+    display:inline-block; font-family:var(--font-mono); font-size:11.5px; font-weight:600;
+    color:var(--thread); background:var(--thread-bg); padding:3px 8px; border-radius:4px;
+    border:1px dashed var(--thread); letter-spacing:0.4px;
+  }
+
+  .status-pill{ display:inline-block; padding:3px 10px; font-size:11px; border-radius:999px; font-weight:700; }
+  .status-Available{ background:#DCEBE0; color:var(--good); }
+  .status-InUse{ background:#DCE6F0; color:var(--navy); }
+  .status-UnderRepair{ background:var(--warn-bg); color:var(--warn); }
+  .status-Retired{ background:#E7E9EC; color:var(--ink-soft); }
+
+  .pill{ display:inline-block; padding:2px 9px; font-size:11px; border-radius:999px; background:var(--bg-deep); color:var(--ink-soft); }
+  .pill.warn{ background:var(--warn-bg); color:var(--warn); font-weight:700; }
+  .pill.bad{ background:var(--bad-bg); color:var(--bad); font-weight:700; }
+
+  .empty-state{
+    text-align:center; padding:36px 20px; color:var(--ink-soft);
+    border:1.5px dashed var(--line); border-radius:var(--radius); background:rgba(255,255,255,0.5);
+  }
+  .empty-state .ic{ font-size:28px; display:block; margin-bottom:8px; }
+  .empty-state .en{ font-weight:700; color:var(--navy-deep); }
+
+  .toast{
+    position:fixed; left:50%; bottom:26px; transform:translateX(-50%) translateY(20px);
+    background:var(--navy-deep); color:#F1F5FA; padding:12px 20px; border-radius:8px;
+    box-shadow:var(--shadow-lift); font-size:14px; opacity:0; pointer-events:none;
+    transition:opacity .25s ease, transform .25s ease; z-index:100; white-space:nowrap;
+  }
+  .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+  .divider{ height:1px; background:var(--line); margin:18px 0; border:none; }
+
+  .modal-backdrop{ position:fixed; inset:0; background:rgba(20,42,68,0.45); display:none; align-items:center; justify-content:center; z-index:200; padding:16px; }
+  .modal-backdrop.show{ display:flex; }
+  .modal{ background:var(--card); border-radius:var(--radius); padding:22px; max-width:400px; width:100%; box-shadow:var(--shadow-lift); }
+  .modal h3{ margin-bottom:10px; font-size:18px; }
+  .modal p{ font-size:14px; color:var(--ink-soft); margin:0 0 16px; }
+  .modal .actions{ display:flex; gap:10px; justify-content:flex-end; }
+
+  .settings-actions{ display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; }
+  #importFileInput{ display:none; }
+  footer{ text-align:center; padding:26px 16px 10px; color:var(--ink-soft); font-size:12px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <header class="app-header">
+    <span class="header-ic">🖥️</span>
+    <h1 class="company-name" id="displayCompanyName">Sri Textiles Pvt Ltd</h1>
+    <div class="company-tagline" id="displayTagline">IT Asset Management</div>
+    <div class="weave-divider">
+      <svg viewBox="0 0 400 22" preserveAspectRatio="none">
+        <defs>
+          <pattern id="herringbone" width="20" height="22" patternUnits="userSpaceOnUse">
+            <path d="M0,22 L10,0 L20,22" fill="none" stroke="#EEF1F6" stroke-width="4"/>
+            <path d="M-10,22 L0,0 L10,22" fill="none" stroke="#EEF1F6" stroke-width="4" opacity="0.55"/>
+          </pattern>
+        </defs>
+        <rect width="400" height="22" fill="url(#herringbone)"/>
+      </svg>
+    </div>
+  </header>
+
+  <nav class="tabs" id="tabNav">
+    <button class="tab-btn active" data-tab="dashboard"><span class="ic">🏠</span>Dashboard</button>
+    <button class="tab-btn" data-tab="assets"><span class="ic">💻</span>Assets</button>
+    <button class="tab-btn" data-tab="assignments"><span class="ic">👤</span>Assignments</button>
+    <button class="tab-btn" data-tab="maintenance"><span class="ic">🔧</span>Maintenance</button>
+    <button class="tab-btn" data-tab="warranty"><span class="ic">🛡️</span>Warranty</button>
+    <button class="tab-btn" data-tab="settings"><span class="ic">⚙️</span>Settings</button>
+  </nav>
+
+  <main>
+
+    <!-- ============================================================
+         DASHBOARD
+         ============================================================ -->
+    <section id="dashboard" class="tab-panel active">
+      <div class="section-head"><div><h2>Overview</h2><div class="sub">Fleet status at a glance</div></div></div>
+      <div class="grid cols-4" id="dashboardStats"></div>
+
+      <hr class="divider">
+      <div class="section-head">
+        <div><h2>Warranty expiring soon</h2><div class="sub">Within the next 30 days, or already expired</div></div>
+        <button class="btn ghost sm" data-goto="warranty">View all →</button>
+      </div>
+      <div id="dashboardWarranty"></div>
+
+      <hr class="divider">
+      <div class="section-head">
+        <div><h2>Open maintenance issues</h2><div class="sub">Assets currently under repair</div></div>
+        <button class="btn ghost sm" data-goto="maintenance">View all →</button>
+      </div>
+      <div id="dashboardMaintenance"></div>
+    </section>
+
+    <!-- ============================================================
+         ASSETS
+         ============================================================ -->
+    <section id="assets" class="tab-panel">
+      <div class="section-head"><div><h2>Asset inventory</h2><div class="sub">Every device the IT department tracks</div></div></div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <h3 style="font-size:16px; margin-bottom:12px;" id="assetFormTitle">Add an asset</h3>
+        <input type="hidden" id="assetId">
+        <div class="form-grid">
+          <div class="field-row">
+            <label class="field">Asset tag</label>
+            <input type="text" id="assetTag" placeholder="Auto-generated if left blank">
+          </div>
+          <div class="field-row">
+            <label class="field">Name / model</label>
+            <input type="text" id="assetName" placeholder="e.g. Dell Latitude 5440">
+          </div>
+          <div class="field-row">
+            <label class="field">Category</label>
+            <select id="assetCategory">
+              <option>Laptop</option>
+              <option>Desktop</option>
+              <option>Printer</option>
+              <option>Server</option>
+              <option>Networking</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="field-row">
+            <label class="field">Serial number</label>
+            <input type="text" id="assetSerial" placeholder="e.g. SN-84213">
+          </div>
+          <div class="field-row">
+            <label class="field">Purchase date</label>
+            <input type="date" id="assetPurchaseDate">
+          </div>
+          <div class="field-row">
+            <label class="field">Warranty / AMC end date</label>
+            <input type="date" id="assetWarrantyEnd">
+          </div>
+        </div>
+        <div id="assetFormError" style="color:var(--bad); font-size:13px; margin-bottom:10px; display:none;"></div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn" id="assetSaveBtn">Save asset</button>
+          <button class="btn ghost" id="assetCancelEditBtn" style="display:none;">Cancel</button>
+        </div>
+      </div>
+
+      <div id="assetList"></div>
+    </section>
+
+    <!-- ============================================================
+         ASSIGNMENTS
+         ============================================================ -->
+    <section id="assignments" class="tab-panel">
+      <div class="section-head"><div><h2>Assign an asset</h2><div class="sub">Check out an available asset to an employee</div></div></div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <div class="form-grid">
+          <div class="field-row">
+            <label class="field">Asset</label>
+            <select id="assignAssetSelect"></select>
+          </div>
+          <div class="field-row">
+            <label class="field">Assigned to (employee name)</label>
+            <input type="text" id="assignEmployee" placeholder="e.g. R. Kumar">
+          </div>
+          <div class="field-row">
+            <label class="field">Department</label>
+            <input type="text" id="assignDept" placeholder="e.g. Weaving, Accounts, Dispatch">
+          </div>
+          <div class="field-row">
+            <label class="field">Date</label>
+            <input type="date" id="assignDate">
+          </div>
+        </div>
+        <div id="assignFormError" style="color:var(--bad); font-size:13px; margin-bottom:10px; display:none;"></div>
+        <button class="btn" id="assignSaveBtn">Assign asset</button>
+      </div>
+
+      <div class="section-head"><div><h2>Currently assigned</h2></div></div>
+      <div id="currentAssignments"></div>
+
+      <hr class="divider">
+      <div class="section-head"><div><h2>Assignment history</h2></div></div>
+      <div id="assignmentHistory"></div>
+    </section>
+
+    <!-- ============================================================
+         MAINTENANCE
+         ============================================================ -->
+    <section id="maintenance" class="tab-panel">
+      <div class="section-head"><div><h2>Log a maintenance issue</h2><div class="sub">Marks the asset as under repair</div></div></div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <div class="form-grid">
+          <div class="field-row">
+            <label class="field">Asset</label>
+            <select id="maintAssetSelect"></select>
+          </div>
+          <div class="field-row">
+            <label class="field">Date reported</label>
+            <input type="date" id="maintDate">
+          </div>
+        </div>
+        <div class="field-row">
+          <label class="field">Issue description</label>
+          <textarea id="maintIssue" placeholder="e.g. Won't power on"></textarea>
+        </div>
+        <div id="maintFormError" style="color:var(--bad); font-size:13px; margin-bottom:10px; display:none;"></div>
+        <button class="btn" id="maintSaveBtn">Log issue</button>
+      </div>
+
+      <div class="section-head"><div><h2>Open issues</h2></div></div>
+      <div id="maintOpenList"></div>
+
+      <hr class="divider">
+      <div class="section-head"><div><h2>Resolved issues</h2></div></div>
+      <div id="maintResolvedList"></div>
+    </section>
+
+    <!-- ============================================================
+         WARRANTY
+         ============================================================ -->
+    <section id="warranty" class="tab-panel">
+      <div class="section-head"><div><h2>Warranty &amp; AMC tracker</h2><div class="sub">Sorted by nearest expiry date</div></div></div>
+      <div id="warrantyList"></div>
+    </section>
+
+    <!-- ============================================================
+         SETTINGS
+         ============================================================ -->
+    <section id="settings" class="tab-panel">
+      <div class="section-head"><div><h2>Settings</h2></div></div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <h3 style="font-size:16px; margin-bottom:12px;">Company details</h3>
+        <div class="field-row">
+          <label class="field">Company name</label>
+          <input type="text" id="settingsCompanyName">
+        </div>
+        <div class="field-row">
+          <label class="field">Tagline</label>
+          <input type="text" id="settingsTagline">
+        </div>
+        <button class="btn" id="saveSettingsBtn">Save details</button>
+      </div>
+
+      <div class="card">
+        <h3 style="font-size:16px; margin-bottom:8px;">Data</h3>
+        <p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">
+          All records are stored only in this browser (localStorage). Export a backup regularly, especially before clearing browser data.
+        </p>
+        <div class="settings-actions">
+          <button class="btn ghost" id="exportBtn">⬇ Export backup (JSON)</button>
+          <button class="btn ghost" id="importBtn">⬆ Import backup</button>
+          <button class="btn danger" id="clearDataBtn">🗑 Clear all data</button>
+        </div>
+        <input type="file" id="importFileInput" accept="application/json">
+      </div>
+    </section>
+
+  </main>
+
+  <footer>Built for Sri Textiles Pvt Ltd · IT Asset Management</footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="confirmModal">
+  <div class="modal">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p id="confirmBody"></p>
+    <div class="actions">
+      <button class="btn ghost" id="confirmCancelBtn">Cancel</button>
+      <button class="btn danger" id="confirmOkBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     STORAGE KEYS & HELPERS
+     ============================================================ */
+  const LS = {
+    settings:    'itam_settings',
+    assets:      'itam_assets',
+    assignments: 'itam_assignments',
+    maintenance: 'itam_maintenance'
+  };
+
+  function loadJSON(key, fallback){
+    try{ const raw = localStorage.getItem(key); return raw === null ? fallback : JSON.parse(raw); }
+    catch(e){ return fallback; }
+  }
+  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayStr(){ return new Date().toISOString().slice(0,10); }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+  function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric', month:'short', year:'numeric'}) : '—'; }
+  function daysUntil(d){ if(!d) return null; const ms = new Date(d+'T00:00:00') - new Date(todayStr()+'T00:00:00'); return Math.round(ms / 86400000); }
+  function statusClass(s){ return 'status-' + s.replace(/\s+/g,''); }
+
+  /* ============================================================
+     STATE
+     ============================================================ */
+  let settings = loadJSON(LS.settings, { companyName:'Sri Textiles Pvt Ltd', tagline:'IT Asset Management' });
+  let assets = loadJSON(LS.assets, []);           // {id, tag, name, category, serial, purchaseDate, warrantyEnd, status}
+  let assignments = loadJSON(LS.assignments, []); // {id, assetId, employee, dept, date, returnedDate}
+  let maintenance = loadJSON(LS.maintenance, []); // {id, assetId, date, issue, status, resolvedDate}
+  let nextTagNum = loadJSON('itam_nexttag', 1);
+
+  function persistAll(){
+    saveJSON(LS.settings, settings);
+    saveJSON(LS.assets, assets);
+    saveJSON(LS.assignments, assignments);
+    saveJSON(LS.maintenance, maintenance);
+    saveJSON('itam_nexttag', nextTagNum);
+  }
+
+  function getAsset(id){ return assets.find(a=>a.id===id); }
+  function activeAssignmentFor(assetId){ return assignments.find(a=>a.assetId===assetId && !a.returnedDate); }
+  function openMaintenanceFor(assetId){ return maintenance.find(m=>m.assetId===assetId && m.status==='Open'); }
+
+  /* ============================================================
+     TOAST
+     ============================================================ */
+  let toastTimer = null;
+  function toast(msg){
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=> el.classList.remove('show'), 2200);
+  }
+
+  /* ============================================================
+     CONFIRM MODAL
+     ============================================================ */
+  function confirmAction(title, body, onOk){
+    const modal = document.getElementById('confirmModal');
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmBody').textContent = body;
+    modal.classList.add('show');
+    const okBtn = document.getElementById('confirmOkBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    function cleanup(){ modal.classList.remove('show'); okBtn.removeEventListener('click', okHandler); cancelBtn.removeEventListener('click', cancelHandler); }
+    function okHandler(){ cleanup(); onOk(); }
+    function cancelHandler(){ cleanup(); }
+    okBtn.addEventListener('click', okHandler);
+    cancelBtn.addEventListener('click', cancelHandler);
+  }
+
+  /* ============================================================
+     TAB NAVIGATION
+     ============================================================ */
+  function goToTab(tab){
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab));
+    renderAll();
+  }
+  document.getElementById('tabNav').addEventListener('click', (e)=>{
+    const btn = e.target.closest('.tab-btn');
+    if(btn) goToTab(btn.dataset.tab);
+  });
+  document.querySelectorAll('[data-goto]').forEach(el=> el.addEventListener('click', ()=> goToTab(el.dataset.goto)));
+
+  /* ============================================================
+     HEADER + SETTINGS
+     ============================================================ */
+  function renderHeader(){
+    document.getElementById('displayCompanyName').textContent = settings.companyName || 'IT Asset Management';
+    document.getElementById('displayTagline').textContent = settings.tagline || '';
+    document.getElementById('displayTagline').style.display = settings.tagline ? '' : 'none';
+    document.getElementById('settingsCompanyName').value = settings.companyName || '';
+    document.getElementById('settingsTagline').value = settings.tagline || '';
+  }
+  document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('settingsCompanyName').value.trim();
+    if(!name){ toast('Company name cannot be empty'); return; }
+    settings.companyName = name;
+    settings.tagline = document.getElementById('settingsTagline').value.trim();
+    persistAll();
+    renderHeader();
+    toast('Saved');
+  });
+
+  document.getElementById('exportBtn').addEventListener('click', ()=>{
+    const backup = { settings, assets, assignments, maintenance, exportedAt: new Date().toISOString() };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `it-asset-backup-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Backup downloaded');
+  });
+
+  document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFileInput').click());
+  document.getElementById('importFileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try{
+        const data = JSON.parse(reader.result);
+        confirmAction('Import backup?', 'This replaces all current data in this browser with the backup file. This cannot be undone.', ()=>{
+          settings = data.settings || settings;
+          assets = data.assets || [];
+          assignments = data.assignments || [];
+          maintenance = data.maintenance || [];
+          persistAll();
+          renderAll(); renderHeader();
+          toast('Backup imported');
+        });
+      }catch(err){ toast('Could not read that file — is it a valid backup JSON?'); }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('clearDataBtn').addEventListener('click', ()=>{
+    confirmAction('Clear all data?', 'This permanently deletes all assets, assignments and maintenance records in this browser. Export a backup first if unsure.', ()=>{
+      assets = []; assignments = []; maintenance = []; nextTagNum = 1;
+      persistAll();
+      renderAll();
+      toast('All data cleared');
+    });
+  });
+
+  /* ============================================================
+     ASSETS — add / edit / delete
+     ============================================================ */
+  let editingAssetId = null;
+
+  function renderAssets(){
+    const list = document.getElementById('assetList');
+    if(assets.length === 0){
+      list.innerHTML = `<div class="empty-state"><span class="ic">💻</span><div class="en">No assets yet — add your first asset above</div></div>`;
+      return;
+    }
+    list.innerHTML = [...assets].sort((a,b)=> a.tag.localeCompare(b.tag)).map(a=>{
+      const assignment = activeAssignmentFor(a.id);
+      return `<div class="item-row">
+        <div class="info">
+          <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
+          <div class="meta">${escapeHtml(a.category)} &middot; Serial: ${escapeHtml(a.serial || '—')} &middot; Warranty ends ${fmtDate(a.warrantyEnd)}</div>
+          ${assignment ? `<div class="meta">Assigned to ${escapeHtml(assignment.employee)} (${escapeHtml(assignment.dept)})</div>` : ''}
+        </div>
+        <span class="status-pill ${statusClass(a.status)}">${a.status}</span>
+        <div class="row-actions">
+          <button class="icon-btn" data-edit="${a.id}" title="Edit">✎</button>
+          <button class="icon-btn danger" data-del="${a.id}" title="Delete">🗑</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function resetAssetForm(){
+    editingAssetId = null;
+    document.getElementById('assetId').value = '';
+    document.getElementById('assetTag').value = '';
+    document.getElementById('assetName').value = '';
+    document.getElementById('assetCategory').value = 'Laptop';
+    document.getElementById('assetSerial').value = '';
+    document.getElementById('assetPurchaseDate').value = '';
+    document.getElementById('assetWarrantyEnd').value = '';
+    document.getElementById('assetFormError').style.display = 'none';
+    document.getElementById('assetFormTitle').textContent = 'Add an asset';
+    document.getElementById('assetSaveBtn').textContent = 'Save asset';
+    document.getElementById('assetCancelEditBtn').style.display = 'none';
+  }
+
+  document.getElementById('assetSaveBtn').addEventListener('click', ()=>{
+    const name = document.getElementById('assetName').value.trim();
+    const category = document.getElementById('assetCategory').value;
+    let tag = document.getElementById('assetTag').value.trim();
+    const serial = document.getElementById('assetSerial').value.trim();
+    const purchaseDate = document.getElementById('assetPurchaseDate').value;
+    const warrantyEnd = document.getElementById('assetWarrantyEnd').value;
+    const errEl = document.getElementById('assetFormError');
+
+    if(!name){ errEl.textContent = 'Please enter a name or model for this asset.'; errEl.style.display='block'; return; }
+
+    const dupTag = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase() && a.id !== editingAssetId);
+    if(tag && dupTag){ errEl.textContent = 'That asset tag is already in use. Choose a different one.'; errEl.style.display='block'; return; }
+    errEl.style.display = 'none';
+
+    if(editingAssetId){
+      const a = getAsset(editingAssetId);
+      a.name = name; a.category = category; a.serial = serial; a.purchaseDate = purchaseDate; a.warrantyEnd = warrantyEnd;
+      if(tag) a.tag = tag;
+    } else {
+      if(!tag){ tag = 'AST-' + String(nextTagNum).padStart(4,'0'); nextTagNum++; }
+      assets.push({ id: uid(), tag, name, category, serial, purchaseDate, warrantyEnd, status:'Available' });
+    }
+    persistAll();
+    resetAssetForm();
+    renderAll();
+    toast('Asset saved');
+  });
+
+  document.getElementById('assetCancelEditBtn').addEventListener('click', resetAssetForm);
+
+  document.getElementById('assetList').addEventListener('click', (e)=>{
+    const editId = e.target.closest('[data-edit]');
+    const delId = e.target.closest('[data-del]');
+    if(editId){
+      const a = getAsset(editId.dataset.edit);
+      if(!a) return;
+      editingAssetId = a.id;
+      document.getElementById('assetId').value = a.id;
+      document.getElementById('assetTag').value = a.tag;
+      document.getElementById('assetName').value = a.name;
+      document.getElementById('assetCategory').value = a.category;
+      document.getElementById('assetSerial').value = a.serial || '';
+      document.getElementById('assetPurchaseDate').value = a.purchaseDate || '';
+      document.getElementById('assetWarrantyEnd').value = a.warrantyEnd || '';
+      document.getElementById('assetFormTitle').textContent = 'Edit asset';
+      document.getElementById('assetSaveBtn').textContent = 'Update asset';
+      document.getElementById('assetCancelEditBtn').style.display = 'inline-flex';
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+    if(delId){
+      const id = delId.dataset.del;
+      const a = getAsset(id);
+      confirmAction('Delete asset?', `Remove "${a ? a.tag + ' — ' + a.name : 'this asset'}" along with its assignment and maintenance history? This cannot be undone.`, ()=>{
+        assets = assets.filter(x=>x.id !== id);
+        assignments = assignments.filter(x=>x.assetId !== id);
+        maintenance = maintenance.filter(x=>x.assetId !== id);
+        persistAll();
+        renderAll();
+        toast('Asset deleted');
+      });
+    }
+  });
+
+  /* ============================================================
+     ASSIGNMENTS
+     ============================================================ */
+  document.getElementById('assignDate').value = todayStr();
+
+  function refreshAssignSelect(){
+    const sel = document.getElementById('assignAssetSelect');
+    const available = assets.filter(a => a.status === 'Available');
+    if(available.length === 0){
+      sel.innerHTML = `<option value="">No available assets</option>`;
+      sel.disabled = true;
+      document.getElementById('assignSaveBtn').disabled = true;
+    } else {
+      sel.disabled = false;
+      document.getElementById('assignSaveBtn').disabled = false;
+      sel.innerHTML = available.map(a => `<option value="${a.id}">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</option>`).join('');
+    }
+  }
+
+  document.getElementById('assignSaveBtn').addEventListener('click', ()=>{
+    const assetId = document.getElementById('assignAssetSelect').value;
+    const employee = document.getElementById('assignEmployee').value.trim();
+    const dept = document.getElementById('assignDept').value.trim();
+    const date = document.getElementById('assignDate').value || todayStr();
+    const errEl = document.getElementById('assignFormError');
+
+    if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
+    if(!employee){ errEl.textContent = 'Please enter the employee name.'; errEl.style.display='block'; return; }
+    if(!dept){ errEl.textContent = 'Please enter the department.'; errEl.style.display='block'; return; }
+    errEl.style.display = 'none';
+
+    assignments.push({ id: uid(), assetId, employee, dept, date, returnedDate:null });
+    const a = getAsset(assetId);
+    if(a) a.status = 'In Use';
+    persistAll();
+    document.getElementById('assignEmployee').value = '';
+    document.getElementById('assignDept').value = '';
+    renderAll();
+    toast('Asset assigned');
+  });
+
+  function renderAssignments(){
+    const current = assignments.filter(a=>!a.returnedDate);
+    const curEl = document.getElementById('currentAssignments');
+    curEl.innerHTML = current.length === 0
+      ? `<div class="empty-state"><span class="ic">👤</span><div class="en">No assets currently assigned</div></div>`
+      : current.map(rec=>{
+          const a = getAsset(rec.assetId);
+          return `<div class="item-row">
+            <div class="info">
+              <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
+              <div class="meta">${escapeHtml(rec.employee)} &middot; ${escapeHtml(rec.dept)} &middot; since ${fmtDate(rec.date)}</div>
+            </div>
+            <button class="btn ghost sm" data-return="${rec.id}">Mark returned</button>
+          </div>`;
+        }).join('');
+
+    const histEl = document.getElementById('assignmentHistory');
+    const past = assignments.filter(a=>a.returnedDate).sort((a,b)=> new Date(b.returnedDate) - new Date(a.returnedDate));
+    histEl.innerHTML = past.length === 0
+      ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No returned assignments yet</div></div>`
+      : past.slice(0,50).map(rec=>{
+          const a = getAsset(rec.assetId);
+          return `<div class="item-row">
+            <div class="info">
+              <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'} — ${escapeHtml(rec.employee)} (${escapeHtml(rec.dept)})</div>
+              <div class="meta">${fmtDate(rec.date)} → returned ${fmtDate(rec.returnedDate)}</div>
+            </div>
+          </div>`;
+        }).join('');
+  }
+
+  document.getElementById('currentAssignments').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-return]');
+    if(!btn) return;
+    const rec = assignments.find(a=>a.id === btn.dataset.return);
+    if(!rec) return;
+    confirmAction('Mark as returned?', 'This makes the asset available for assignment again.', ()=>{
+      rec.returnedDate = todayStr();
+      const a = getAsset(rec.assetId);
+      if(a && a.status === 'In Use') a.status = 'Available';
+      persistAll();
+      renderAll();
+      toast('Marked returned');
+    });
+  });
+
+  /* ============================================================
+     MAINTENANCE
+     ============================================================ */
+  document.getElementById('maintDate').value = todayStr();
+
+  function refreshMaintSelect(){
+    const sel = document.getElementById('maintAssetSelect');
+    const eligible = assets.filter(a => a.status !== 'Retired' && !openMaintenanceFor(a.id));
+    if(eligible.length === 0){
+      sel.innerHTML = `<option value="">No assets available to log</option>`;
+      sel.disabled = true;
+      document.getElementById('maintSaveBtn').disabled = true;
+    } else {
+      sel.disabled = false;
+      document.getElementById('maintSaveBtn').disabled = false;
+      sel.innerHTML = eligible.map(a => `<option value="${a.id}">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</option>`).join('');
+    }
+  }
+
+  document.getElementById('maintSaveBtn').addEventListener('click', ()=>{
+    const assetId = document.getElementById('maintAssetSelect').value;
+    const date = document.getElementById('maintDate').value || todayStr();
+    const issue = document.getElementById('maintIssue').value.trim();
+    const errEl = document.getElementById('maintFormError');
+
+    if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
+    if(!issue){ errEl.textContent = 'Please describe the issue.'; errEl.style.display='block'; return; }
+    errEl.style.display = 'none';
+
+    maintenance.push({ id: uid(), assetId, date, issue, status:'Open', resolvedDate:null });
+    const a = getAsset(assetId);
+    if(a) a.status = 'Under Repair';
+    persistAll();
+    document.getElementById('maintIssue').value = '';
+    renderAll();
+    toast('Issue logged');
+  });
+
+  function renderMaintenance(){
+    const open = maintenance.filter(m=>m.status==='Open').sort((a,b)=> new Date(a.date)-new Date(b.date));
+    document.getElementById('maintOpenList').innerHTML = open.length === 0
+      ? `<div class="empty-state"><span class="ic">✅</span><div class="en">No open issues</div></div>`
+      : open.map(m=>{
+          const a = getAsset(m.assetId);
+          return `<div class="item-row">
+            <div class="info">
+              <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
+              <div class="meta">Reported ${fmtDate(m.date)}: ${escapeHtml(m.issue)}</div>
+            </div>
+            <button class="btn ghost sm" data-resolve="${m.id}">Mark resolved</button>
+          </div>`;
+        }).join('');
+
+    const resolved = maintenance.filter(m=>m.status==='Resolved').sort((a,b)=> new Date(b.resolvedDate) - new Date(a.resolvedDate));
+    document.getElementById('maintResolvedList').innerHTML = resolved.length === 0
+      ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No resolved issues yet</div></div>`
+      : resolved.slice(0,50).map(m=>{
+          const a = getAsset(m.assetId);
+          return `<div class="item-row">
+            <div class="info">
+              <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'}: ${escapeHtml(m.issue)}</div>
+              <div class="meta">Reported ${fmtDate(m.date)} &middot; resolved ${fmtDate(m.resolvedDate)}</div>
+            </div>
+          </div>`;
+        }).join('');
+  }
+
+  document.getElementById('maintOpenList').addEventListener('click', (e)=>{
+    const btn = e.target.closest('[data-resolve]');
+    if(!btn) return;
+    const m = maintenance.find(x=>x.id === btn.dataset.resolve);
+    if(!m) return;
+    m.status = 'Resolved';
+    m.resolvedDate = todayStr();
+    const a = getAsset(m.assetId);
+    if(a){
+      const active = activeAssignmentFor(a.id);
+      a.status = active ? 'In Use' : 'Available';
+    }
+    persistAll();
+    renderAll();
+    toast('Issue marked resolved');
+  });
+
+  /* ============================================================
+     WARRANTY
+     ============================================================ */
+  function renderWarranty(){
+    const el = document.getElementById('warrantyList');
+    const withDates = assets.filter(a => a.warrantyEnd);
+    if(withDates.length === 0){
+      el.innerHTML = `<div class="empty-state"><span class="ic">🛡️</span><div class="en">No warranty/AMC dates recorded yet — add them from the Assets tab</div></div>`;
+      return;
+    }
+    const sorted = [...withDates].sort((a,b)=> new Date(a.warrantyEnd) - new Date(b.warrantyEnd));
+    el.innerHTML = sorted.map(a=>{
+      const d = daysUntil(a.warrantyEnd);
+      let pill = `<span class="pill">${d} day${Math.abs(d)===1?'':'s'} left</span>`;
+      if(d < 0) pill = `<span class="pill bad">Expired ${fmtDate(a.warrantyEnd)}</span>`;
+      else if(d <= 30) pill = `<span class="pill warn">${d} day${d===1?'':'s'} left</span>`;
+      return `<div class="item-row">
+        <div class="info">
+          <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
+          <div class="meta">${escapeHtml(a.category)} &middot; ends ${fmtDate(a.warrantyEnd)}</div>
+        </div>
+        ${pill}
+      </div>`;
+    }).join('');
+  }
+
+  /* ============================================================
+     DASHBOARD
+     ============================================================ */
+  function renderDashboard(){
+    const inUse = assets.filter(a=>a.status==='In Use').length;
+    const underRepair = assets.filter(a=>a.status==='Under Repair').length;
+    const expiringSoon = assets.filter(a=>{ const d = daysUntil(a.warrantyEnd); return d !== null && d <= 30; }).length;
+
+    document.getElementById('dashboardStats').innerHTML = `
+      <div class="card stat-card"><div class="num">${assets.length}</div><div class="lbl">Total assets</div></div>
+      <div class="card stat-card"><div class="num">${inUse}</div><div class="lbl">In use</div></div>
+      <div class="card stat-card"><div class="num" style="${underRepair?'color:var(--warn)':''}">${underRepair}</div><div class="lbl">Under repair</div></div>
+      <div class="card stat-card"><div class="num" style="${expiringSoon?'color:var(--bad)':''}">${expiringSoon}</div><div class="lbl">Warranty expiring</div></div>
+    `;
+
+    const warrEl = document.getElementById('dashboardWarranty');
+    const soon = assets.filter(a=>{ const d = daysUntil(a.warrantyEnd); return d !== null && d <= 30; })
+                        .sort((a,b)=> new Date(a.warrantyEnd) - new Date(b.warrantyEnd));
+    warrEl.innerHTML = soon.length === 0
+      ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">Nothing expiring soon</div></div>`
+      : soon.slice(0,6).map(a=>{
+          const d = daysUntil(a.warrantyEnd);
+          return `<div class="item-row"><div class="info"><div class="name">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</div></div>${d<0?`<span class="pill bad">Expired</span>`:`<span class="pill warn">${d}d left</span>`}</div>`;
+        }).join('');
+
+    const maintEl = document.getElementById('dashboardMaintenance');
+    const open = maintenance.filter(m=>m.status==='Open');
+    maintEl.innerHTML = open.length === 0
+      ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">No open maintenance issues</div></div>`
+      : open.slice(0,6).map(m=>{
+          const a = getAsset(m.assetId);
+          return `<div class="item-row"><div class="info"><div class="name">${a?escapeHtml(a.tag):'—'} — ${escapeHtml(m.issue)}</div><div class="meta">Since ${fmtDate(m.date)}</div></div></div>`;
+        }).join('');
+  }
+
+  /* ============================================================
+     RENDER ALL
+     ============================================================ */
+  function renderAll(){
+    renderDashboard();
+    renderAssets();
+    refreshAssignSelect();
+    renderAssignments();
+    refreshMaintSelect();
+    renderMaintenance();
+    renderWarranty();
+  }
+
+  renderHeader();
+  renderAll();
+
+})();
+</script>
+</body>
+</html>
