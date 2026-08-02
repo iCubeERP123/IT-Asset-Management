@@ -1,0 +1,45 @@
+create table itam_settings (
+  id int primary key,
+  company_name text,
+  tagline text
+);
+
+create table itam_assets (
+  id uuid primary key default gen_random_uuid(),
+  tag text not null,
+  name text not null,
+  category text,
+  serial text,
+  purchase_date date,
+  warranty_end date,
+  status text default 'Available'
+);
+
+create table itam_assignments (
+  id uuid primary key default gen_random_uuid(),
+  asset_id uuid references itam_assets(id),
+  employee text,
+  dept text,
+  date date,
+  returned_date date
+);
+
+create table itam_maintenance (
+  id uuid primary key default gen_random_uuid(),
+  asset_id uuid references itam_assets(id),
+  date date,
+  issue text,
+  status text default 'Open',
+  resolved_date date
+);
+
+-- Allow the public/anon key to read & write (adjust for real auth later)
+alter table itam_settings enable row level security;
+alter table itam_assets enable row level security;
+alter table itam_assignments enable row level security;
+alter table itam_maintenance enable row level security;
+
+create policy "public access" on itam_settings for all using (true) with check (true);
+create policy "public access" on itam_assets for all using (true) with check (true);
+create policy "public access" on itam_assignments for all using (true) with check (true);
+create policy "public access" on itam_maintenance for all using (true) with check (true);
