@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sri Textiles Pvt Ltd — IT Asset Management</title>
+<title>Software Pvt Ltd — IT Asset Management</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700;900&family=PT+Serif:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -291,16 +291,44 @@
     #printArea, #printArea *{ visibility:visible !important; }
     #printArea{ display:block !important; position:absolute; left:0; top:0; width:100%; padding:14px; }
   }
+
+  /* ============================================================
+     SUPABASE CONNECTION BADGE + LOADING OVERLAY
+     ============================================================ */
+  .conn-badge{
+    position:fixed; top:10px; right:10px; z-index:300; font-size:11px; font-weight:700;
+    padding:5px 10px; border-radius:999px; display:flex; align-items:center; gap:6px;
+    box-shadow:var(--shadow); background:#fff; color:var(--ink-soft); border:1px solid var(--line);
+  }
+  .conn-badge .dot{ width:7px; height:7px; border-radius:50%; background:var(--ink-soft); }
+  .conn-badge.ok .dot{ background:var(--good); }
+  .conn-badge.ok{ color:var(--good); }
+  .conn-badge.err .dot{ background:var(--bad); }
+  .conn-badge.err{ color:var(--bad); }
+  .conn-badge.loading .dot{ background:var(--warn); animation:pulse 1s infinite; }
+  .conn-badge.loading{ color:var(--warn); }
+  @keyframes pulse{ 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+  .btn.loading{ position:relative; color:transparent !important; pointer-events:none; }
+  .btn.loading::after{
+    content:""; position:absolute; width:14px; height:14px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.5); border-top-color:#fff; top:50%; left:50%;
+    margin:-7px 0 0 -7px; animation:spin .6s linear infinite;
+  }
+  .btn.ghost.loading::after{ border:2px solid rgba(20,42,68,0.25); border-top-color:var(--navy-deep); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<div class="conn-badge loading" id="connBadge"><span class="dot"></span><span id="connBadgeText">Connecting…</span></div>
 
 <div class="app">
 
   <header class="app-header">
     <span class="header-ic">🖥️</span>
-    <h1 class="company-name" id="displayCompanyName">Sri Textiles Pvt Ltd</h1>
-    <div class="company-tagline" id="displayTagline">IT Asset Management-Manivannan</div>
+    <h1 class="company-name" id="displayCompanyName">Software Pvt Ltd</h1>
+    <div class="company-tagline" id="displayTagline">IT Asset Management</div>
     <div class="weave-divider">
       <svg viewBox="0 0 400 22" preserveAspectRatio="none">
         <defs>
@@ -521,7 +549,7 @@
       <div class="card">
         <h3 style="font-size:16px; margin-bottom:8px;">Data</h3>
         <p style="font-size:13px; color:var(--ink-soft); margin:0 0 12px;">
-          All records are stored only in this browser (localStorage). Export a backup regularly, especially before clearing browser data.
+          All records are stored in a shared Supabase database — everyone using this page sees the same live data. Export a backup occasionally as a safety copy.
         </p>
         <div class="settings-actions">
           <button class="btn ghost" id="exportBtn">⬇ Export backup (JSON)</button>
@@ -534,7 +562,7 @@
 
   </main>
 
-  <footer>Built for Sri Textiles Pvt Ltd · IT Asset Management-Manivannan</footer>
+  <footer>Built for Software Pvt. Ltd. &middot; IT Asset Management – Manivannan &middot; Powered by Supabase</footer>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -585,855 +613,960 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
-<script>
-(function(){
-  "use strict";
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-  /* ============================================================
-     STORAGE KEYS & HELPERS
-     ============================================================ */
-  const LS = {
-    settings:    'itam_settings',
-    assets:      'itam_assets',
-    assignments: 'itam_assignments',
-    maintenance: 'itam_maintenance'
-  };
+/* ============================================================
+   SUPABASE CONFIG
+   Replace these with your own project's URL and public
+   (anon/publishable) API key from Project Settings → API.
+   ============================================================ */
+const SUPABASE_URL = "https://drkjdltmgvirzbhblrnz.supabase.co";
+const SUPABASE_KEY = "sb_publishable_HZCGzZY4bqSjKZ9Z99G0jg_e5QWml-8";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  function loadJSON(key, fallback){
-    try{ const raw = localStorage.getItem(key); return raw === null ? fallback : JSON.parse(raw); }
-    catch(e){ return fallback; }
+/* ============================================================
+   HELPERS
+   ============================================================ */
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric', month:'short', year:'numeric'}) : '—'; }
+function daysUntil(d){ if(!d) return null; const ms = new Date(d+'T00:00:00') - new Date(todayStr()+'T00:00:00'); return Math.round(ms / 86400000); }
+function statusClass(s){ return 'status-' + String(s).replace(/\s+/g,''); }
+
+function setBtnLoading(btn, isLoading){
+  if(!btn) return;
+  btn.classList.toggle('loading', isLoading);
+  btn.disabled = isLoading || btn.dataset.keepEnabled === '1';
+}
+
+function setConnBadge(state, text){
+  const badge = document.getElementById('connBadge');
+  badge.className = 'conn-badge ' + state;
+  document.getElementById('connBadgeText').textContent = text;
+}
+
+/* ============================================================
+   STATE (in-memory cache, kept in sync with Supabase)
+   ============================================================ */
+let settings = { companyName:'Software Pvt Ltd', tagline:'IT Asset Management' };
+let assets = [];        // {id, tag, name, category, serial, purchase_date, warranty_end, status}
+let assignments = [];   // {id, asset_id, employee, dept, date, returned_date}
+let maintenance = [];   // {id, asset_id, date, issue, status, resolved_date}
+let assetSearchQuery = '';
+
+function getAsset(id){ return assets.find(a=>a.id===id); }
+function activeAssignmentFor(assetId){ return assignments.find(a=>a.asset_id===assetId && !a.returned_date); }
+function openMaintenanceFor(assetId){ return maintenance.find(m=>m.asset_id===assetId && m.status==='Open'); }
+
+/* ============================================================
+   SUPABASE DATA LAYER
+   ============================================================ */
+async function fetchAll(){
+  const [settingsRes, assetsRes, assignRes, maintRes] = await Promise.all([
+    supabase.from('itam_settings').select('*').eq('id', 1).maybeSingle(),
+    supabase.from('itam_assets').select('*'),
+    supabase.from('itam_assignments').select('*'),
+    supabase.from('itam_maintenance').select('*')
+  ]);
+  for(const r of [settingsRes, assetsRes, assignRes, maintRes]){
+    if(r.error) throw r.error;
   }
-  function saveJSON(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
-  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-  function todayStr(){ return new Date().toISOString().slice(0,10); }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  function fmtDate(d){ return d ? new Date(d+'T00:00:00').toLocaleDateString('en-IN',{day:'numeric', month:'short', year:'numeric'}) : '—'; }
-  function daysUntil(d){ if(!d) return null; const ms = new Date(d+'T00:00:00') - new Date(todayStr()+'T00:00:00'); return Math.round(ms / 86400000); }
-  function statusClass(s){ return 'status-' + s.replace(/\s+/g,''); }
-
-  /* ============================================================
-     STATE
-     ============================================================ */
-  let settings = loadJSON(LS.settings, { companyName:'Sri Textiles Pvt Ltd', tagline:'IT Asset Management' });
-  let assets = loadJSON(LS.assets, []);           // {id, tag, name, category, serial, purchaseDate, warrantyEnd, status}
-  let assignments = loadJSON(LS.assignments, []); // {id, assetId, employee, dept, date, returnedDate}
-  let maintenance = loadJSON(LS.maintenance, []); // {id, assetId, date, issue, status, resolvedDate}
-  let nextTagNum = loadJSON('itam_nexttag', 1);
-  let assetSearchQuery = '';
-
-  function persistAll(){
-    saveJSON(LS.settings, settings);
-    saveJSON(LS.assets, assets);
-    saveJSON(LS.assignments, assignments);
-    saveJSON(LS.maintenance, maintenance);
-    saveJSON('itam_nexttag', nextTagNum);
+  if(settingsRes.data){
+    settings = { companyName: settingsRes.data.company_name, tagline: settingsRes.data.tagline };
   }
+  assets = assetsRes.data || [];
+  assignments = assignRes.data || [];
+  maintenance = maintRes.data || [];
+}
 
-  function getAsset(id){ return assets.find(a=>a.id===id); }
-  function activeAssignmentFor(assetId){ return assignments.find(a=>a.assetId===assetId && !a.returnedDate); }
-  function openMaintenanceFor(assetId){ return maintenance.find(m=>m.assetId===assetId && m.status==='Open'); }
+async function refreshAndRender(){
+  await fetchAll();
+  renderHeader();
+  renderAll();
+}
 
-  /* ============================================================
-     TOAST
-     ============================================================ */
-  let toastTimer = null;
-  function toast(msg){
-    const el = document.getElementById('toast');
-    el.textContent = msg;
-    el.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(()=> el.classList.remove('show'), 2200);
+async function initApp(){
+  setConnBadge('loading', 'Connecting…');
+  try{
+    await fetchAll();
+    setConnBadge('ok', 'Connected');
+    setTimeout(()=>{ const b=document.getElementById('connBadge'); if(b.classList.contains('ok')) b.style.opacity='0.55'; }, 2500);
+  }catch(err){
+    console.error(err);
+    setConnBadge('err', 'Database error — see console');
+    toast('Could not connect to Supabase. Check your project URL/key and that the tables exist.');
   }
+  renderHeader();
+  renderAll();
+}
 
-  /* ============================================================
-     CONFIRM MODAL
-     ============================================================ */
-  function confirmAction(title, body, onOk){
-    const modal = document.getElementById('confirmModal');
-    document.getElementById('confirmTitle').textContent = title;
-    document.getElementById('confirmBody').textContent = body;
-    modal.classList.add('show');
-    const okBtn = document.getElementById('confirmOkBtn');
-    const cancelBtn = document.getElementById('confirmCancelBtn');
-    function cleanup(){ modal.classList.remove('show'); okBtn.removeEventListener('click', okHandler); cancelBtn.removeEventListener('click', cancelHandler); }
-    function okHandler(){ cleanup(); onOk(); }
-    function cancelHandler(){ cleanup(); }
-    okBtn.addEventListener('click', okHandler);
-    cancelBtn.addEventListener('click', cancelHandler);
-  }
+/* ============================================================
+   TOAST
+   ============================================================ */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> el.classList.remove('show'), 2600);
+}
 
-  /* ============================================================
-     TAB NAVIGATION
-     ============================================================ */
-  function goToTab(tab){
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab));
-    renderAll();
-  }
-  document.getElementById('tabNav').addEventListener('click', (e)=>{
-    const btn = e.target.closest('.tab-btn');
-    if(btn) goToTab(btn.dataset.tab);
-  });
-  document.querySelectorAll('[data-goto]').forEach(el=> el.addEventListener('click', ()=> goToTab(el.dataset.goto)));
+/* ============================================================
+   CONFIRM MODAL
+   ============================================================ */
+function confirmAction(title, body, onOk){
+  const modal = document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent = title;
+  document.getElementById('confirmBody').textContent = body;
+  modal.classList.add('show');
+  const okBtn = document.getElementById('confirmOkBtn');
+  const cancelBtn = document.getElementById('confirmCancelBtn');
+  function cleanup(){ modal.classList.remove('show'); okBtn.removeEventListener('click', okHandler); cancelBtn.removeEventListener('click', cancelHandler); }
+  function okHandler(){ cleanup(); onOk(); }
+  function cancelHandler(){ cleanup(); }
+  okBtn.addEventListener('click', okHandler);
+  cancelBtn.addEventListener('click', cancelHandler);
+}
 
-  /* ============================================================
-     HEADER + SETTINGS
-     ============================================================ */
-  function renderHeader(){
-    document.getElementById('displayCompanyName').textContent = settings.companyName || 'IT Asset Management';
-    document.getElementById('displayTagline').textContent = settings.tagline || '';
-    document.getElementById('displayTagline').style.display = settings.tagline ? '' : 'none';
-    document.getElementById('settingsCompanyName').value = settings.companyName || '';
-    document.getElementById('settingsTagline').value = settings.tagline || '';
-  }
-  document.getElementById('saveSettingsBtn').addEventListener('click', ()=>{
-    const name = document.getElementById('settingsCompanyName').value.trim();
-    if(!name){ toast('Company name cannot be empty'); return; }
-    settings.companyName = name;
-    settings.tagline = document.getElementById('settingsTagline').value.trim();
-    persistAll();
+/* ============================================================
+   TAB NAVIGATION
+   ============================================================ */
+function goToTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === tab));
+  renderAll();
+}
+document.getElementById('tabNav').addEventListener('click', (e)=>{
+  const btn = e.target.closest('.tab-btn');
+  if(btn) goToTab(btn.dataset.tab);
+});
+document.querySelectorAll('[data-goto]').forEach(el=> el.addEventListener('click', ()=> goToTab(el.dataset.goto)));
+
+/* ============================================================
+   HEADER + SETTINGS
+   ============================================================ */
+function renderHeader(){
+  document.getElementById('displayCompanyName').textContent = settings.companyName || 'IT Asset Management';
+  document.getElementById('displayTagline').textContent = settings.tagline || '';
+  document.getElementById('displayTagline').style.display = settings.tagline ? '' : 'none';
+  document.getElementById('settingsCompanyName').value = settings.companyName || '';
+  document.getElementById('settingsTagline').value = settings.tagline || '';
+}
+
+document.getElementById('saveSettingsBtn').addEventListener('click', async (e)=>{
+  const name = document.getElementById('settingsCompanyName').value.trim();
+  if(!name){ toast('Company name cannot be empty'); return; }
+  const tagline = document.getElementById('settingsTagline').value.trim();
+  setBtnLoading(e.currentTarget, true);
+  try{
+    const { error } = await supabase.from('itam_settings').upsert({ id:1, company_name:name, tagline });
+    if(error) throw error;
+    settings = { companyName:name, tagline };
     renderHeader();
     toast('Saved');
-  });
+  }catch(err){ console.error(err); toast('Could not save settings: ' + err.message); }
+  setBtnLoading(e.currentTarget, false);
+});
 
-  document.getElementById('exportBtn').addEventListener('click', ()=>{
-    const backup = { settings, assets, assignments, maintenance, exportedAt: new Date().toISOString() };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `it-asset-backup-${todayStr()}.json`;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast('Backup downloaded');
-  });
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const backup = { settings, assets, assignments, maintenance, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type:'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `it-asset-backup-${todayStr()}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  toast('Backup downloaded');
+});
 
-  document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFileInput').click());
-  document.getElementById('importFileInput').addEventListener('change', (e)=>{
-    const file = e.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
+document.getElementById('importBtn').addEventListener('click', ()=> document.getElementById('importFileInput').click());
+document.getElementById('importFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let data;
+    try{ data = JSON.parse(reader.result); }
+    catch(err){ toast('Could not read that file — is it a valid backup JSON?'); return; }
+    confirmAction('Import backup?', 'This replaces ALL current data in the shared Supabase database with the contents of this backup file. This cannot be undone.', async ()=>{
       try{
-        const data = JSON.parse(reader.result);
-        confirmAction('Import backup?', 'This replaces all current data in this browser with the backup file. This cannot be undone.', ()=>{
-          settings = data.settings || settings;
-          assets = data.assets || [];
-          assignments = data.assignments || [];
-          maintenance = data.maintenance || [];
-          persistAll();
-          renderAll(); renderHeader();
-          toast('Backup imported');
-        });
-      }catch(err){ toast('Could not read that file — is it a valid backup JSON?'); }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  });
+        toast('Importing…');
+        // Wipe existing rows
+        await supabase.from('itam_maintenance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('itam_assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        await supabase.from('itam_assets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
-  document.getElementById('clearDataBtn').addEventListener('click', ()=>{
-    confirmAction('Clear all data?', 'This permanently deletes all assets, assignments and maintenance records in this browser. Export a backup first if unsure.', ()=>{
-      assets = []; assignments = []; maintenance = []; nextTagNum = 1;
-      persistAll();
-      renderAll();
-      toast('All data cleared');
+        const impAssets = (data.assets || []).map(a=>({
+          id: a.id, tag: a.tag, name: a.name, category: a.category, serial: a.serial,
+          purchase_date: a.purchase_date || a.purchaseDate || null,
+          warranty_end: a.warranty_end || a.warrantyEnd || null, status: a.status || 'Available'
+        }));
+        const impAssignments = (data.assignments || []).map(a=>({
+          id: a.id, asset_id: a.asset_id || a.assetId, employee: a.employee, dept: a.dept,
+          date: a.date, returned_date: a.returned_date || a.returnedDate || null
+        }));
+        const impMaint = (data.maintenance || []).map(m=>({
+          id: m.id, asset_id: m.asset_id || m.assetId, date: m.date, issue: m.issue,
+          status: m.status || 'Open', resolved_date: m.resolved_date || m.resolvedDate || null
+        }));
+
+        if(impAssets.length){ const {error} = await supabase.from('itam_assets').insert(impAssets); if(error) throw error; }
+        if(impAssignments.length){ const {error} = await supabase.from('itam_assignments').insert(impAssignments); if(error) throw error; }
+        if(impMaint.length){ const {error} = await supabase.from('itam_maintenance').insert(impMaint); if(error) throw error; }
+        if(data.settings){
+          const {error} = await supabase.from('itam_settings').upsert({ id:1, company_name:data.settings.companyName, tagline:data.settings.tagline });
+          if(error) throw error;
+        }
+        await refreshAndRender();
+        toast('Backup imported');
+      }catch(err){ console.error(err); toast('Import failed: ' + err.message); }
     });
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('clearDataBtn').addEventListener('click', ()=>{
+  confirmAction('Clear all data?', 'This permanently deletes all assets, assignments and maintenance records from the shared Supabase database. Export a backup first if unsure.', async ()=>{
+    try{
+      toast('Clearing…');
+      await supabase.from('itam_maintenance').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('itam_assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('itam_assets').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await refreshAndRender();
+      toast('All data cleared');
+    }catch(err){ console.error(err); toast('Could not clear data: ' + err.message); }
   });
+});
 
-  /* ============================================================
-     ASSETS — add / edit / delete
-     ============================================================ */
-  let editingAssetId = null;
+/* ============================================================
+   ASSETS — add / edit / delete
+   ============================================================ */
+let editingAssetId = null;
 
-  function renderAssets(){
-    const list = document.getElementById('assetList');
-    const hint = document.getElementById('assetSearchHint');
-    if(assets.length === 0){
-      list.innerHTML = `<div class="empty-state"><span class="ic">💻</span><div class="en">No assets yet — add your first asset above</div></div>`;
-      hint.style.display = 'none';
-      return;
-    }
+function renderAssets(){
+  const list = document.getElementById('assetList');
+  const hint = document.getElementById('assetSearchHint');
+  if(assets.length === 0){
+    list.innerHTML = `<div class="empty-state"><span class="ic">💻</span><div class="en">No assets yet — add your first asset above</div></div>`;
+    hint.style.display = 'none';
+    return;
+  }
 
-    const q = assetSearchQuery.trim().toLowerCase();
-    let visible = [...assets].sort((a,b)=> a.tag.localeCompare(b.tag));
-    if(q){
-      visible = visible.filter(a=>{
-        const assignment = activeAssignmentFor(a.id);
-        const haystack = [a.tag, a.name, a.category, a.serial, assignment ? assignment.employee : '', assignment ? assignment.dept : '']
-          .filter(Boolean).join(' ').toLowerCase();
-        return haystack.includes(q);
-      });
-      hint.style.display = 'block';
-      hint.innerHTML = `<b>${visible.length}</b> of ${assets.length} asset${assets.length===1?'':'s'} match "${escapeHtml(assetSearchQuery.trim())}"`;
-    } else {
-      hint.style.display = 'none';
-    }
-
-    if(visible.length === 0){
-      list.innerHTML = `<div class="empty-state"><span class="ic">🔍</span><div class="en">No assets match that search</div></div>`;
-      return;
-    }
-
-    list.innerHTML = visible.map(a=>{
+  const q = assetSearchQuery.trim().toLowerCase();
+  let visible = [...assets].sort((a,b)=> a.tag.localeCompare(b.tag));
+  if(q){
+    visible = visible.filter(a=>{
       const assignment = activeAssignmentFor(a.id);
-      return `<div class="item-row">
-        <div class="info">
-          <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
-          <div class="meta">${escapeHtml(a.category)} &middot; Serial: ${escapeHtml(a.serial || '—')} &middot; Warranty ends ${fmtDate(a.warrantyEnd)}</div>
-          ${assignment ? `<div class="meta">Assigned to ${escapeHtml(assignment.employee)} (${escapeHtml(assignment.dept)})</div>` : ''}
-        </div>
-        <span class="status-pill ${statusClass(a.status)}">${a.status}</span>
-        <div class="row-actions">
-          <button class="icon-btn qr-btn" data-qr="${a.id}" title="View / print QR label">▦</button>
-          <button class="icon-btn" data-edit="${a.id}" title="Edit">✎</button>
-          <button class="icon-btn danger" data-del="${a.id}" title="Delete">🗑</button>
-        </div>
-      </div>`;
-    }).join('');
+      const haystack = [a.tag, a.name, a.category, a.serial, assignment ? assignment.employee : '', assignment ? assignment.dept : '']
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+    hint.style.display = 'block';
+    hint.innerHTML = `<b>${visible.length}</b> of ${assets.length} asset${assets.length===1?'':'s'} match "${escapeHtml(assetSearchQuery.trim())}"`;
+  } else {
+    hint.style.display = 'none';
   }
 
-  function resetAssetForm(){
-    editingAssetId = null;
-    document.getElementById('assetId').value = '';
-    document.getElementById('assetTag').value = '';
-    document.getElementById('assetName').value = '';
-    document.getElementById('assetCategory').value = 'Laptop';
-    document.getElementById('assetSerial').value = '';
-    document.getElementById('assetPurchaseDate').value = '';
-    document.getElementById('assetWarrantyEnd').value = '';
-    document.getElementById('assetFormError').style.display = 'none';
-    document.getElementById('assetFormTitle').textContent = 'Add an asset';
-    document.getElementById('assetSaveBtn').textContent = 'Save asset';
-    document.getElementById('assetCancelEditBtn').style.display = 'none';
+  if(visible.length === 0){
+    list.innerHTML = `<div class="empty-state"><span class="ic">🔍</span><div class="en">No assets match that search</div></div>`;
+    return;
   }
 
-  document.getElementById('assetSaveBtn').addEventListener('click', ()=>{
-    const name = document.getElementById('assetName').value.trim();
-    const category = document.getElementById('assetCategory').value;
-    let tag = document.getElementById('assetTag').value.trim();
-    const serial = document.getElementById('assetSerial').value.trim();
-    const purchaseDate = document.getElementById('assetPurchaseDate').value;
-    const warrantyEnd = document.getElementById('assetWarrantyEnd').value;
-    const errEl = document.getElementById('assetFormError');
+  list.innerHTML = visible.map(a=>{
+    const assignment = activeAssignmentFor(a.id);
+    return `<div class="item-row">
+      <div class="info">
+        <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
+        <div class="meta">${escapeHtml(a.category)} &middot; Serial: ${escapeHtml(a.serial || '—')} &middot; Warranty ends ${fmtDate(a.warranty_end)}</div>
+        ${assignment ? `<div class="meta">Assigned to ${escapeHtml(assignment.employee)} (${escapeHtml(assignment.dept)})</div>` : ''}
+      </div>
+      <span class="status-pill ${statusClass(a.status)}">${a.status}</span>
+      <div class="row-actions">
+        <button class="icon-btn qr-btn" data-qr="${a.id}" title="View / print QR label">▦</button>
+        <button class="icon-btn" data-edit="${a.id}" title="Edit">✎</button>
+        <button class="icon-btn danger" data-del="${a.id}" title="Delete">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
 
-    if(!name){ errEl.textContent = 'Please enter a name or model for this asset.'; errEl.style.display='block'; return; }
+function resetAssetForm(){
+  editingAssetId = null;
+  document.getElementById('assetId').value = '';
+  document.getElementById('assetTag').value = '';
+  document.getElementById('assetName').value = '';
+  document.getElementById('assetCategory').value = 'Laptop';
+  document.getElementById('assetSerial').value = '';
+  document.getElementById('assetPurchaseDate').value = '';
+  document.getElementById('assetWarrantyEnd').value = '';
+  document.getElementById('assetFormError').style.display = 'none';
+  document.getElementById('assetFormTitle').textContent = 'Add an asset';
+  document.getElementById('assetSaveBtn').textContent = 'Save asset';
+  document.getElementById('assetCancelEditBtn').style.display = 'none';
+}
 
-    const dupTag = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase() && a.id !== editingAssetId);
-    if(tag && dupTag){ errEl.textContent = 'That asset tag is already in use. Choose a different one.'; errEl.style.display='block'; return; }
-    errEl.style.display = 'none';
+function nextAutoTag(){
+  let max = 0;
+  assets.forEach(a=>{
+    const m = /^AST-(\d+)$/.exec(a.tag || '');
+    if(m) max = Math.max(max, parseInt(m[1],10));
+  });
+  return 'AST-' + String(max+1).padStart(4,'0');
+}
 
+document.getElementById('assetSaveBtn').addEventListener('click', async (e)=>{
+  const name = document.getElementById('assetName').value.trim();
+  const category = document.getElementById('assetCategory').value;
+  let tag = document.getElementById('assetTag').value.trim();
+  const serial = document.getElementById('assetSerial').value.trim();
+  const purchaseDate = document.getElementById('assetPurchaseDate').value || null;
+  const warrantyEnd = document.getElementById('assetWarrantyEnd').value || null;
+  const errEl = document.getElementById('assetFormError');
+
+  if(!name){ errEl.textContent = 'Please enter a name or model for this asset.'; errEl.style.display='block'; return; }
+
+  const dupTag = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase() && a.id !== editingAssetId);
+  if(tag && dupTag){ errEl.textContent = 'That asset tag is already in use. Choose a different one.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
+
+  setBtnLoading(e.currentTarget, true);
+  try{
     if(editingAssetId){
-      const a = getAsset(editingAssetId);
-      a.name = name; a.category = category; a.serial = serial; a.purchaseDate = purchaseDate; a.warrantyEnd = warrantyEnd;
-      if(tag) a.tag = tag;
+      const payload = { name, category, serial, purchase_date: purchaseDate, warranty_end: warrantyEnd };
+      if(tag) payload.tag = tag;
+      const { error } = await supabase.from('itam_assets').update(payload).eq('id', editingAssetId);
+      if(error) throw error;
     } else {
-      if(!tag){ tag = 'AST-' + String(nextTagNum).padStart(4,'0'); nextTagNum++; }
-      assets.push({ id: uid(), tag, name, category, serial, purchaseDate, warrantyEnd, status:'Available' });
-    }
-    persistAll();
-    resetAssetForm();
-    renderAll();
-    toast('Asset saved');
-  });
-
-  document.getElementById('assetCancelEditBtn').addEventListener('click', resetAssetForm);
-
-  document.getElementById('assetList').addEventListener('click', (e)=>{
-    const qrId = e.target.closest('[data-qr]');
-    const editId = e.target.closest('[data-edit]');
-    const delId = e.target.closest('[data-del]');
-    if(qrId){
-      const a = getAsset(qrId.dataset.qr);
-      if(a) openAssetQrModal(a);
-    }
-    if(editId){
-      const a = getAsset(editId.dataset.edit);
-      if(!a) return;
-      editingAssetId = a.id;
-      document.getElementById('assetId').value = a.id;
-      document.getElementById('assetTag').value = a.tag;
-      document.getElementById('assetName').value = a.name;
-      document.getElementById('assetCategory').value = a.category;
-      document.getElementById('assetSerial').value = a.serial || '';
-      document.getElementById('assetPurchaseDate').value = a.purchaseDate || '';
-      document.getElementById('assetWarrantyEnd').value = a.warrantyEnd || '';
-      document.getElementById('assetFormTitle').textContent = 'Edit asset';
-      document.getElementById('assetSaveBtn').textContent = 'Update asset';
-      document.getElementById('assetCancelEditBtn').style.display = 'inline-flex';
-      window.scrollTo({top:0, behavior:'smooth'});
-    }
-    if(delId){
-      const id = delId.dataset.del;
-      const a = getAsset(id);
-      confirmAction('Delete asset?', `Remove "${a ? a.tag + ' — ' + a.name : 'this asset'}" along with its assignment and maintenance history? This cannot be undone.`, ()=>{
-        assets = assets.filter(x=>x.id !== id);
-        assignments = assignments.filter(x=>x.assetId !== id);
-        maintenance = maintenance.filter(x=>x.assetId !== id);
-        persistAll();
-        renderAll();
-        toast('Asset deleted');
+      if(!tag) tag = nextAutoTag();
+      const { error } = await supabase.from('itam_assets').insert({
+        tag, name, category, serial, purchase_date: purchaseDate, warranty_end: warrantyEnd, status:'Available'
       });
+      if(error) throw error;
     }
-  });
+    await refreshAndRender();
+    resetAssetForm();
+    toast('Asset saved');
+  }catch(err){ console.error(err); errEl.textContent = 'Could not save: ' + err.message; errEl.style.display = 'block'; }
+  setBtnLoading(e.currentTarget, false);
+});
 
-  /* ============================================================
-     SEARCH
-     ============================================================ */
-  document.getElementById('assetSearchInput').addEventListener('input', (e)=>{
-    assetSearchQuery = e.target.value;
-    renderAssets();
-  });
+document.getElementById('assetCancelEditBtn').addEventListener('click', resetAssetForm);
 
-  /* ============================================================
-     QR CODES — per-asset label view/print, bulk label sheet,
-     and camera-based QR search
-     ============================================================ */
-  const QR_PREFIX = 'ITAM-ASSET:';
-
-  function qrTextForAsset(a){ return QR_PREFIX + a.tag; }
-
-  function renderQrInto(el, text, size){
-    el.innerHTML = '';
-    // eslint-disable-next-line no-undef
-    new QRCode(el, { text, width:size, height:size, correctLevel: QRCode.CorrectLevel.M });
+document.getElementById('assetList').addEventListener('click', async (e)=>{
+  const qrId = e.target.closest('[data-qr]');
+  const editId = e.target.closest('[data-edit]');
+  const delId = e.target.closest('[data-del]');
+  if(qrId){
+    const a = getAsset(qrId.dataset.qr);
+    if(a) openAssetQrModal(a);
   }
-
-  function qrImgSrcFromContainer(el){
-    const img = el.querySelector('img');
-    const canvas = el.querySelector('canvas');
-    if(img && img.src) return img.src;
-    if(canvas) return canvas.toDataURL('image/png');
-    return '';
+  if(editId){
+    const a = getAsset(editId.dataset.edit);
+    if(!a) return;
+    editingAssetId = a.id;
+    document.getElementById('assetId').value = a.id;
+    document.getElementById('assetTag').value = a.tag;
+    document.getElementById('assetName').value = a.name;
+    document.getElementById('assetCategory').value = a.category;
+    document.getElementById('assetSerial').value = a.serial || '';
+    document.getElementById('assetPurchaseDate').value = a.purchase_date || '';
+    document.getElementById('assetWarrantyEnd').value = a.warranty_end || '';
+    document.getElementById('assetFormTitle').textContent = 'Edit asset';
+    document.getElementById('assetSaveBtn').textContent = 'Update asset';
+    document.getElementById('assetCancelEditBtn').style.display = 'inline-flex';
+    window.scrollTo({top:0, behavior:'smooth'});
   }
-
-  function openAssetQrModal(a){
-    const backdrop = document.getElementById('qrModal');
-    document.getElementById('qrModalTag').textContent = a.tag;
-    document.getElementById('qrModalName').textContent = a.name;
-    renderQrInto(document.getElementById('qrModalCanvas'), qrTextForAsset(a), 168);
-    backdrop.classList.add('show');
-    document.getElementById('qrModalPrintBtn').onclick = ()=> printSingleLabel(a);
+  if(delId){
+    const id = delId.dataset.del;
+    const a = getAsset(id);
+    confirmAction('Delete asset?', `Remove "${a ? a.tag + ' — ' + a.name : 'this asset'}" along with its assignment and maintenance history? This cannot be undone.`, async ()=>{
+      try{
+        await supabase.from('itam_assignments').delete().eq('asset_id', id);
+        await supabase.from('itam_maintenance').delete().eq('asset_id', id);
+        const { error } = await supabase.from('itam_assets').delete().eq('id', id);
+        if(error) throw error;
+        await refreshAndRender();
+        toast('Asset deleted');
+      }catch(err){ console.error(err); toast('Could not delete: ' + err.message); }
+    });
   }
-  document.getElementById('qrModalCloseBtn').addEventListener('click', ()=>{
-    document.getElementById('qrModal').classList.remove('show');
-  });
+});
 
-  function printSingleLabel(a){
-    const tmp = document.createElement('div');
-    renderQrInto(tmp, qrTextForAsset(a), 220);
-    const src = qrImgSrcFromContainer(tmp);
-    document.getElementById('printArea').innerHTML = `
-      <div class="print-label-grid" style="grid-template-columns:1fr; max-width:260px; margin:0 auto;">
-        <div class="print-label">
-          <img src="${src}" alt="QR code">
-          <div class="plt">${escapeHtml(a.tag)}</div>
-          <div class="pln">${escapeHtml(a.name)}</div>
-          <div class="plc">${escapeHtml(settings.companyName || '')}</div>
-        </div>
-      </div>`;
-    window.print();
-  }
+/* ============================================================
+   SEARCH
+   ============================================================ */
+document.getElementById('assetSearchInput').addEventListener('input', (e)=>{
+  assetSearchQuery = e.target.value;
+  renderAssets();
+});
 
-  document.getElementById('printAllQrBtn').addEventListener('click', ()=>{
-    if(assets.length === 0){ toast('No assets to print labels for'); return; }
-    const grid = document.createElement('div');
-    grid.className = 'print-label-grid';
-    assets.forEach(a=>{
-      const cell = document.createElement('div');
-      cell.className = 'print-label';
-      const qrHolder = document.createElement('div');
-      renderQrInto(qrHolder, qrTextForAsset(a), 78);
-      const src = qrImgSrcFromContainer(qrHolder);
-      cell.innerHTML = `
+/* ============================================================
+   QR CODES — per-asset label view/print, bulk label sheet,
+   and camera-based QR search
+   ============================================================ */
+const QR_PREFIX = 'ITAM-ASSET:';
+
+function qrTextForAsset(a){ return QR_PREFIX + a.tag; }
+
+function renderQrInto(el, text, size){
+  el.innerHTML = '';
+  // eslint-disable-next-line no-undef
+  new QRCode(el, { text, width:size, height:size, correctLevel: QRCode.CorrectLevel.M });
+}
+
+function qrImgSrcFromContainer(el){
+  const img = el.querySelector('img');
+  const canvas = el.querySelector('canvas');
+  if(img && img.src) return img.src;
+  if(canvas) return canvas.toDataURL('image/png');
+  return '';
+}
+
+function openAssetQrModal(a){
+  const backdrop = document.getElementById('qrModal');
+  document.getElementById('qrModalTag').textContent = a.tag;
+  document.getElementById('qrModalName').textContent = a.name;
+  renderQrInto(document.getElementById('qrModalCanvas'), qrTextForAsset(a), 168);
+  backdrop.classList.add('show');
+  document.getElementById('qrModalPrintBtn').onclick = ()=> printSingleLabel(a);
+}
+document.getElementById('qrModalCloseBtn').addEventListener('click', ()=>{
+  document.getElementById('qrModal').classList.remove('show');
+});
+
+function printSingleLabel(a){
+  const tmp = document.createElement('div');
+  renderQrInto(tmp, qrTextForAsset(a), 220);
+  const src = qrImgSrcFromContainer(tmp);
+  document.getElementById('printArea').innerHTML = `
+    <div class="print-label-grid" style="grid-template-columns:1fr; max-width:260px; margin:0 auto;">
+      <div class="print-label">
         <img src="${src}" alt="QR code">
         <div class="plt">${escapeHtml(a.tag)}</div>
         <div class="pln">${escapeHtml(a.name)}</div>
-        <div class="plc">${escapeHtml(settings.companyName || '')}</div>`;
-      grid.appendChild(cell);
-    });
-    const printArea = document.getElementById('printArea');
-    printArea.innerHTML = '';
-    printArea.appendChild(grid);
-    window.print();
+        <div class="plc">${escapeHtml(settings.companyName || '')}</div>
+      </div>
+    </div>`;
+  window.print();
+}
+
+document.getElementById('printAllQrBtn').addEventListener('click', ()=>{
+  if(assets.length === 0){ toast('No assets to print labels for'); return; }
+  const grid = document.createElement('div');
+  grid.className = 'print-label-grid';
+  assets.forEach(a=>{
+    const cell = document.createElement('div');
+    cell.className = 'print-label';
+    const qrHolder = document.createElement('div');
+    renderQrInto(qrHolder, qrTextForAsset(a), 78);
+    const src = qrImgSrcFromContainer(qrHolder);
+    cell.innerHTML = `
+      <img src="${src}" alt="QR code">
+      <div class="plt">${escapeHtml(a.tag)}</div>
+      <div class="pln">${escapeHtml(a.name)}</div>
+      <div class="plc">${escapeHtml(settings.companyName || '')}</div>`;
+    grid.appendChild(cell);
   });
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = '';
+  printArea.appendChild(grid);
+  window.print();
+});
 
-  /* ---- Camera QR scan (search by QR) ---- */
-  let scanStream = null;
-  let scanRAF = null;
+/* ---- Camera QR scan (search by QR) ---- */
+let scanStream = null;
+let scanRAF = null;
 
-  function stopScan(){
-    if(scanRAF) cancelAnimationFrame(scanRAF);
-    scanRAF = null;
-    if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream = null; }
+function stopScan(){
+  if(scanRAF) cancelAnimationFrame(scanRAF);
+  scanRAF = null;
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream = null; }
+}
+
+async function openScanModal(){
+  const backdrop = document.getElementById('scanModal');
+  const statusEl = document.getElementById('scanStatus');
+  statusEl.textContent = 'Requesting camera access…';
+  backdrop.classList.add('show');
+  const video = document.getElementById('scanVideo');
+  const canvas = document.getElementById('scanCanvas');
+  const ctx = canvas.getContext('2d');
+
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  }catch(err){
+    statusEl.textContent = 'Could not access the camera. Check browser permissions, or search by typing the asset tag instead.';
+    return;
   }
+  video.srcObject = scanStream;
+  await video.play();
+  statusEl.textContent = 'Point the camera at an asset\'s QR label…';
 
-  async function openScanModal(){
-    const backdrop = document.getElementById('scanModal');
-    const statusEl = document.getElementById('scanStatus');
-    statusEl.textContent = 'Requesting camera access…';
-    backdrop.classList.add('show');
-    const video = document.getElementById('scanVideo');
-    const canvas = document.getElementById('scanCanvas');
-    const ctx = canvas.getContext('2d');
-
-    try{
-      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-    }catch(err){
-      statusEl.textContent = 'Could not access the camera. Check browser permissions, or search by typing the asset tag instead.';
-      return;
-    }
-    video.srcObject = scanStream;
-    await video.play();
-    statusEl.textContent = 'Point the camera at an asset\'s QR label…';
-
-    function tick(){
-      if(!scanStream) return;
-      if(video.readyState === video.HAVE_ENOUGH_DATA){
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        // eslint-disable-next-line no-undef
-        const result = jsQR(imageData.data, imageData.width, imageData.height);
-        if(result && result.data){
-          handleScanResult(result.data);
-          return;
-        }
+  function tick(){
+    if(!scanStream) return;
+    if(video.readyState === video.HAVE_ENOUGH_DATA){
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      // eslint-disable-next-line no-undef
+      const result = jsQR(imageData.data, imageData.width, imageData.height);
+      if(result && result.data){
+        handleScanResult(result.data);
+        return;
       }
-      scanRAF = requestAnimationFrame(tick);
     }
     scanRAF = requestAnimationFrame(tick);
   }
+  scanRAF = requestAnimationFrame(tick);
+}
 
-  function closeScanModal(){
-    stopScan();
-    document.getElementById('scanModal').classList.remove('show');
-    const video = document.getElementById('scanVideo');
-    video.pause();
-    video.srcObject = null;
+function closeScanModal(){
+  stopScan();
+  document.getElementById('scanModal').classList.remove('show');
+  const video = document.getElementById('scanVideo');
+  video.pause();
+  video.srcObject = null;
+}
+
+function handleScanResult(text){
+  stopScan();
+  let tag = text.startsWith(QR_PREFIX) ? text.slice(QR_PREFIX.length) : text;
+  closeScanModal();
+  const match = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase());
+  document.getElementById('assetSearchInput').value = tag;
+  assetSearchQuery = tag;
+  goToTab('assets');
+  if(match){ toast(`Found: ${match.tag} — ${match.name}`); }
+  else{ toast(`No asset found for code "${tag}"`); }
+}
+
+document.getElementById('scanQrBtn').addEventListener('click', openScanModal);
+document.getElementById('scanModalCloseBtn').addEventListener('click', closeScanModal);
+
+/* ============================================================
+   SEARCHABLE ASSET PICKER (combobox used by Assign / Maintenance)
+   ============================================================ */
+function initAssetPicker({ searchId, hiddenId, dropdownId, getEligible }){
+  const search = document.getElementById(searchId);
+  const hidden = document.getElementById(hiddenId);
+  const dropdown = document.getElementById(dropdownId);
+  let hiIndex = -1;
+
+  function matches(){
+    const q = search.value.trim().toLowerCase();
+    const eligible = getEligible();
+    if(!q) return eligible;
+    return eligible.filter(a => (a.tag+' '+a.name+' '+a.category+' '+(a.serial||'')).toLowerCase().includes(q));
+  }
+  function optionsHtml(list){
+    if(list.length === 0) return `<div class="asset-picker-empty">No matching assets</div>`;
+    return list.map(a => `<div class="asset-picker-option" data-id="${a.id}">
+        <span class="op-tag">${escapeHtml(a.tag)}</span><span class="op-name">${escapeHtml(a.name)}</span>
+      </div>`).join('');
+  }
+  function openDropdown(){
+    if(search.disabled) return;
+    dropdown.innerHTML = optionsHtml(matches());
+    dropdown.classList.add('show');
+    hiIndex = -1;
+  }
+  function closeDropdown(){ dropdown.classList.remove('show'); }
+  function highlight(){
+    const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
+    opts.forEach(o=>o.classList.remove('hi'));
+    if(opts[hiIndex]){ opts[hiIndex].classList.add('hi'); opts[hiIndex].scrollIntoView({block:'nearest'}); }
+  }
+  function selectOption(id){
+    const a = getEligible().find(x=>x.id===id);
+    if(!a) return;
+    hidden.value = a.id;
+    search.value = `${a.tag} — ${a.name}`;
+    closeDropdown();
   }
 
-  function handleScanResult(text){
-    stopScan();
-    let tag = text.startsWith(QR_PREFIX) ? text.slice(QR_PREFIX.length) : text;
-    closeScanModal();
-    const match = assets.find(a => a.tag.toLowerCase() === tag.toLowerCase());
-    document.getElementById('assetSearchInput').value = tag;
-    assetSearchQuery = tag;
-    goToTab('assets');
-    if(match){ toast(`Found: ${match.tag} — ${match.name}`); }
-    else{ toast(`No asset found for code "${tag}"`); }
-  }
-
-  document.getElementById('scanQrBtn').addEventListener('click', openScanModal);
-  document.getElementById('scanModalCloseBtn').addEventListener('click', closeScanModal);
-
-  /* ============================================================
-     SEARCHABLE ASSET PICKER (combobox used by Assign / Maintenance)
-     ============================================================ */
-  function initAssetPicker({ searchId, hiddenId, dropdownId, getEligible }){
-    const search = document.getElementById(searchId);
-    const hidden = document.getElementById(hiddenId);
-    const dropdown = document.getElementById(dropdownId);
-    let hiIndex = -1;
-
-    function matches(){
-      const q = search.value.trim().toLowerCase();
-      const eligible = getEligible();
-      if(!q) return eligible;
-      return eligible.filter(a => (a.tag+' '+a.name+' '+a.category+' '+(a.serial||'')).toLowerCase().includes(q));
-    }
-    function optionsHtml(list){
-      if(list.length === 0) return `<div class="asset-picker-empty">No matching assets</div>`;
-      return list.map(a => `<div class="asset-picker-option" data-id="${a.id}">
-          <span class="op-tag">${escapeHtml(a.tag)}</span><span class="op-name">${escapeHtml(a.name)}</span>
-        </div>`).join('');
-    }
-    function openDropdown(){
-      if(search.disabled) return;
-      dropdown.innerHTML = optionsHtml(matches());
-      dropdown.classList.add('show');
-      hiIndex = -1;
-    }
-    function closeDropdown(){ dropdown.classList.remove('show'); }
-    function highlight(){
-      const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
-      opts.forEach(o=>o.classList.remove('hi'));
-      if(opts[hiIndex]){ opts[hiIndex].classList.add('hi'); opts[hiIndex].scrollIntoView({block:'nearest'}); }
-    }
-    function selectOption(id){
-      const a = getEligible().find(x=>x.id===id);
-      if(!a) return;
-      hidden.value = a.id;
-      search.value = `${a.tag} — ${a.name}`;
-      closeDropdown();
-    }
-
-    search.addEventListener('focus', openDropdown);
-    search.addEventListener('input', ()=>{ hidden.value = ''; openDropdown(); });
-    search.addEventListener('blur', ()=> setTimeout(closeDropdown, 150));
-    search.addEventListener('keydown', (e)=>{
-      const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
-      if(e.key === 'ArrowDown'){ e.preventDefault(); if(!dropdown.classList.contains('show')) openDropdown(); hiIndex = Math.min(hiIndex+1, opts.length-1); highlight(); }
-      else if(e.key === 'ArrowUp'){ e.preventDefault(); hiIndex = Math.max(hiIndex-1, 0); highlight(); }
-      else if(e.key === 'Enter'){ if(dropdown.classList.contains('show')){ e.preventDefault(); if(hiIndex>=0 && opts[hiIndex]) selectOption(opts[hiIndex].dataset.id); } }
-      else if(e.key === 'Escape'){ closeDropdown(); }
-    });
-    dropdown.addEventListener('mousedown', (e)=>{
-      const opt = e.target.closest('.asset-picker-option');
-      if(!opt) return;
-      e.preventDefault();
-      selectOption(opt.dataset.id);
-    });
-
-    return { reset(){ hidden.value = ''; search.value = ''; closeDropdown(); } };
-  }
-
-  let assignEligibleAssets = [];
-  let maintEligibleAssets = [];
-
-  const assignPicker = initAssetPicker({
-    searchId: 'assignAssetSearch', hiddenId: 'assignAssetSelect', dropdownId: 'assignAssetDropdown',
-    getEligible: ()=> assignEligibleAssets
+  search.addEventListener('focus', openDropdown);
+  search.addEventListener('input', ()=>{ hidden.value = ''; openDropdown(); });
+  search.addEventListener('blur', ()=> setTimeout(closeDropdown, 150));
+  search.addEventListener('keydown', (e)=>{
+    const opts = [...dropdown.querySelectorAll('.asset-picker-option')];
+    if(e.key === 'ArrowDown'){ e.preventDefault(); if(!dropdown.classList.contains('show')) openDropdown(); hiIndex = Math.min(hiIndex+1, opts.length-1); highlight(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); hiIndex = Math.max(hiIndex-1, 0); highlight(); }
+    else if(e.key === 'Enter'){ if(dropdown.classList.contains('show')){ e.preventDefault(); if(hiIndex>=0 && opts[hiIndex]) selectOption(opts[hiIndex].dataset.id); } }
+    else if(e.key === 'Escape'){ closeDropdown(); }
   });
-  const maintPicker = initAssetPicker({
-    searchId: 'maintAssetSearch', hiddenId: 'maintAssetSelect', dropdownId: 'maintAssetDropdown',
-    getEligible: ()=> maintEligibleAssets
+  dropdown.addEventListener('mousedown', (e)=>{
+    const opt = e.target.closest('.asset-picker-option');
+    if(!opt) return;
+    e.preventDefault();
+    selectOption(opt.dataset.id);
   });
 
-  /* ============================================================
-     ASSIGNMENTS
-     ============================================================ */
-  document.getElementById('assignDate').value = todayStr();
+  return { reset(){ hidden.value = ''; search.value = ''; closeDropdown(); } };
+}
 
-  function refreshAssignSelect(){
-    assignEligibleAssets = assets.filter(a => a.status === 'Available');
-    const search = document.getElementById('assignAssetSearch');
-    const hidden = document.getElementById('assignAssetSelect');
-    const btn = document.getElementById('assignSaveBtn');
-    if(assignEligibleAssets.length === 0){
-      assignPicker.reset();
-      search.placeholder = 'No available assets';
-      search.disabled = true;
-      btn.disabled = true;
-    } else {
-      search.disabled = false;
-      btn.disabled = false;
-      search.placeholder = 'Search asset by tag or name…';
-      if(hidden.value && !assignEligibleAssets.find(a=>a.id===hidden.value)) assignPicker.reset();
-    }
+let assignEligibleAssets = [];
+let maintEligibleAssets = [];
+
+const assignPicker = initAssetPicker({
+  searchId: 'assignAssetSearch', hiddenId: 'assignAssetSelect', dropdownId: 'assignAssetDropdown',
+  getEligible: ()=> assignEligibleAssets
+});
+const maintPicker = initAssetPicker({
+  searchId: 'maintAssetSearch', hiddenId: 'maintAssetSelect', dropdownId: 'maintAssetDropdown',
+  getEligible: ()=> maintEligibleAssets
+});
+
+/* ============================================================
+   ASSIGNMENTS
+   ============================================================ */
+document.getElementById('assignDate').value = todayStr();
+
+function refreshAssignSelect(){
+  assignEligibleAssets = assets.filter(a => a.status === 'Available');
+  const search = document.getElementById('assignAssetSearch');
+  const hidden = document.getElementById('assignAssetSelect');
+  const btn = document.getElementById('assignSaveBtn');
+  if(assignEligibleAssets.length === 0){
+    assignPicker.reset();
+    search.placeholder = 'No available assets';
+    search.disabled = true;
+    btn.disabled = true;
+  } else {
+    search.disabled = false;
+    btn.disabled = false;
+    search.placeholder = 'Search asset by tag or name…';
+    if(hidden.value && !assignEligibleAssets.find(a=>a.id===hidden.value)) assignPicker.reset();
   }
+}
 
-  document.getElementById('assignSaveBtn').addEventListener('click', ()=>{
-    const assetId = document.getElementById('assignAssetSelect').value;
-    const employee = document.getElementById('assignEmployee').value.trim();
-    const dept = document.getElementById('assignDept').value.trim();
-    const date = document.getElementById('assignDate').value || todayStr();
-    const errEl = document.getElementById('assignFormError');
+document.getElementById('assignSaveBtn').addEventListener('click', async (e)=>{
+  const assetId = document.getElementById('assignAssetSelect').value;
+  const employee = document.getElementById('assignEmployee').value.trim();
+  const dept = document.getElementById('assignDept').value.trim();
+  const date = document.getElementById('assignDate').value || todayStr();
+  const errEl = document.getElementById('assignFormError');
 
-    if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
-    if(!employee){ errEl.textContent = 'Please enter the employee name.'; errEl.style.display='block'; return; }
-    if(!dept){ errEl.textContent = 'Please enter the department.'; errEl.style.display='block'; return; }
-    errEl.style.display = 'none';
+  if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
+  if(!employee){ errEl.textContent = 'Please enter the employee name.'; errEl.style.display='block'; return; }
+  if(!dept){ errEl.textContent = 'Please enter the department.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
 
-    assignments.push({ id: uid(), assetId, employee, dept, date, returnedDate:null });
-    const a = getAsset(assetId);
-    if(a) a.status = 'In Use';
-    persistAll();
+  setBtnLoading(e.currentTarget, true);
+  try{
+    const { error: e1 } = await supabase.from('itam_assignments').insert({ asset_id:assetId, employee, dept, date, returned_date:null });
+    if(e1) throw e1;
+    const { error: e2 } = await supabase.from('itam_assets').update({ status:'In Use' }).eq('id', assetId);
+    if(e2) throw e2;
+    await refreshAndRender();
     document.getElementById('assignEmployee').value = '';
     document.getElementById('assignDept').value = '';
-    renderAll();
     toast('Asset assigned');
-  });
+  }catch(err){ console.error(err); errEl.textContent = 'Could not assign: ' + err.message; errEl.style.display = 'block'; }
+  setBtnLoading(e.currentTarget, false);
+});
 
-  function renderAssignments(){
-    const current = assignments.filter(a=>!a.returnedDate);
-    const curEl = document.getElementById('currentAssignments');
-    curEl.innerHTML = current.length === 0
-      ? `<div class="empty-state"><span class="ic">👤</span><div class="en">No assets currently assigned</div></div>`
-      : current.map(rec=>{
-          const a = getAsset(rec.assetId);
-          return `<div class="item-row">
-            <div class="info">
-              <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
-              <div class="meta">${escapeHtml(rec.employee)} &middot; ${escapeHtml(rec.dept)} &middot; since ${fmtDate(rec.date)}</div>
-            </div>
-            <div class="row-actions">
-              <button class="btn ghost sm" data-handover="${rec.id}">🖨 Handover doc</button>
-              <button class="btn ghost sm" data-return="${rec.id}">Mark returned</button>
-            </div>
-          </div>`;
-        }).join('');
-
-    const histEl = document.getElementById('assignmentHistory');
-    const past = assignments.filter(a=>a.returnedDate).sort((a,b)=> new Date(b.returnedDate) - new Date(a.returnedDate));
-    histEl.innerHTML = past.length === 0
-      ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No returned assignments yet</div></div>`
-      : past.slice(0,50).map(rec=>{
-          const a = getAsset(rec.assetId);
-          return `<div class="item-row">
-            <div class="info">
-              <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'} — ${escapeHtml(rec.employee)} (${escapeHtml(rec.dept)})</div>
-              <div class="meta">${fmtDate(rec.date)} → returned ${fmtDate(rec.returnedDate)}</div>
-            </div>
+function renderAssignments(){
+  const current = assignments.filter(a=>!a.returned_date);
+  const curEl = document.getElementById('currentAssignments');
+  curEl.innerHTML = current.length === 0
+    ? `<div class="empty-state"><span class="ic">👤</span><div class="en">No assets currently assigned</div></div>`
+    : current.map(rec=>{
+        const a = getAsset(rec.asset_id);
+        return `<div class="item-row">
+          <div class="info">
+            <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
+            <div class="meta">${escapeHtml(rec.employee)} &middot; ${escapeHtml(rec.dept)} &middot; since ${fmtDate(rec.date)}</div>
+          </div>
+          <div class="row-actions">
             <button class="btn ghost sm" data-handover="${rec.id}">🖨 Handover doc</button>
-          </div>`;
-        }).join('');
-  }
+            <button class="btn ghost sm" data-return="${rec.id}">Mark returned</button>
+          </div>
+        </div>`;
+      }).join('');
 
-  document.getElementById('currentAssignments').addEventListener('click', (e)=>{
-    const handoverBtn = e.target.closest('[data-handover]');
-    if(handoverBtn){ printHandoverDoc(handoverBtn.dataset.handover); return; }
-    const btn = e.target.closest('[data-return]');
-    if(!btn) return;
-    const rec = assignments.find(a=>a.id === btn.dataset.return);
-    if(!rec) return;
-    confirmAction('Mark as returned?', 'This makes the asset available for assignment again.', ()=>{
-      rec.returnedDate = todayStr();
-      const a = getAsset(rec.assetId);
-      if(a && a.status === 'In Use') a.status = 'Available';
-      persistAll();
-      renderAll();
+  const histEl = document.getElementById('assignmentHistory');
+  const past = assignments.filter(a=>a.returned_date).sort((a,b)=> new Date(b.returned_date) - new Date(a.returned_date));
+  histEl.innerHTML = past.length === 0
+    ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No returned assignments yet</div></div>`
+    : past.slice(0,50).map(rec=>{
+        const a = getAsset(rec.asset_id);
+        return `<div class="item-row">
+          <div class="info">
+            <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'} — ${escapeHtml(rec.employee)} (${escapeHtml(rec.dept)})</div>
+            <div class="meta">${fmtDate(rec.date)} → returned ${fmtDate(rec.returned_date)}</div>
+          </div>
+          <button class="btn ghost sm" data-handover="${rec.id}">🖨 Handover doc</button>
+        </div>`;
+      }).join('');
+}
+
+document.getElementById('currentAssignments').addEventListener('click', async (e)=>{
+  const handoverBtn = e.target.closest('[data-handover]');
+  if(handoverBtn){ printHandoverDoc(handoverBtn.dataset.handover); return; }
+  const btn = e.target.closest('[data-return]');
+  if(!btn) return;
+  const rec = assignments.find(a=>a.id === btn.dataset.return);
+  if(!rec) return;
+  confirmAction('Mark as returned?', 'This makes the asset available for assignment again.', async ()=>{
+    try{
+      const { error: e1 } = await supabase.from('itam_assignments').update({ returned_date: todayStr() }).eq('id', rec.id);
+      if(e1) throw e1;
+      const a = getAsset(rec.asset_id);
+      if(a && a.status === 'In Use'){
+        const { error: e2 } = await supabase.from('itam_assets').update({ status:'Available' }).eq('id', a.id);
+        if(e2) throw e2;
+      }
+      await refreshAndRender();
       toast('Marked returned');
-    });
+    }catch(err){ console.error(err); toast('Could not update: ' + err.message); }
   });
+});
 
-  document.getElementById('assignmentHistory').addEventListener('click', (e)=>{
-    const handoverBtn = e.target.closest('[data-handover]');
-    if(handoverBtn) printHandoverDoc(handoverBtn.dataset.handover);
-  });
+document.getElementById('assignmentHistory').addEventListener('click', (e)=>{
+  const handoverBtn = e.target.closest('[data-handover]');
+  if(handoverBtn) printHandoverDoc(handoverBtn.dataset.handover);
+});
 
-  /* ============================================================
-     ASSET HANDOVER DOCUMENT — printable record for issuing
-     (or having issued) an asset to an employee
-     ============================================================ */
-  function printHandoverDoc(assignmentId){
-    const rec = assignments.find(a=>a.id === assignmentId);
-    if(!rec){ toast('Could not find that assignment'); return; }
-    const a = getAsset(rec.assetId);
-    if(!a){ toast('Asset record not found'); return; }
+/* ============================================================
+   ASSET HANDOVER DOCUMENT — printable record for issuing
+   (or having issued) an asset to an employee
+   ============================================================ */
+function printHandoverDoc(assignmentId){
+  const rec = assignments.find(a=>a.id === assignmentId);
+  if(!rec){ toast('Could not find that assignment'); return; }
+  const a = getAsset(rec.asset_id);
+  if(!a){ toast('Asset record not found'); return; }
 
-    const refNo = 'HO-' + rec.id.toUpperCase();
-    const printArea = document.getElementById('printArea');
-    printArea.innerHTML = `
-      <div class="handover-doc">
-        <div class="hd-head">
-          <div>
-            <div class="hd-company">${escapeHtml(settings.companyName || '')}</div>
-            <div class="hd-tagline">${escapeHtml(settings.tagline || '')}</div>
-          </div>
-          <div class="hd-title">
-            <h2>ASSET HANDOVER DOCUMENT</h2>
-            <div class="hd-ref">Ref: ${escapeHtml(refNo)} &middot; ${fmtDate(rec.date)}</div>
-          </div>
+  const refNo = 'HO-' + String(rec.id).slice(0,8).toUpperCase();
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = `
+    <div class="handover-doc">
+      <div class="hd-head">
+        <div>
+          <div class="hd-company">${escapeHtml(settings.companyName || '')}</div>
+          <div class="hd-tagline">${escapeHtml(settings.tagline || '')}</div>
         </div>
-
-        <h4>Asset details</h4>
-        <table>
-          <tr><td class="k">Asset tag</td><td class="v">${escapeHtml(a.tag)}</td></tr>
-          <tr><td class="k">Name / model</td><td class="v">${escapeHtml(a.name)}</td></tr>
-          <tr><td class="k">Category</td><td class="v">${escapeHtml(a.category)}</td></tr>
-          <tr><td class="k">Serial number</td><td class="v">${escapeHtml(a.serial || '—')}</td></tr>
-          <tr><td class="k">Warranty / AMC ends</td><td class="v">${fmtDate(a.warrantyEnd)}</td></tr>
-        </table>
-
-        <h4>Issued to</h4>
-        <table>
-          <tr><td class="k">Employee name</td><td class="v">${escapeHtml(rec.employee)}</td></tr>
-          <tr><td class="k">Department</td><td class="v">${escapeHtml(rec.dept)}</td></tr>
-          <tr><td class="k">Date of issue</td><td class="v">${fmtDate(rec.date)}</td></tr>
-          <tr><td class="k">Status</td><td class="v">${rec.returnedDate ? 'Returned on ' + fmtDate(rec.returnedDate) : 'Currently in use'}</td></tr>
-        </table>
-
-        <h4>Terms &amp; conditions</h4>
-        <ol>
-          <li>The employee acknowledges receipt of the above asset in good working condition, complete with any accessories issued alongside it.</li>
-          <li>The asset remains the property of ${escapeHtml(settings.companyName || 'the company')} and is issued solely for official use.</li>
-          <li>The employee is responsible for the reasonable care, security, and safekeeping of the asset for the duration of use.</li>
-          <li>Any damage, loss, or malfunction must be reported promptly to the IT department.</li>
-          <li>The asset, along with all accessories, must be returned to the IT department upon request or on separation from the company.</li>
-          <li>Unauthorized repair, modification, or transfer of the asset to another individual is not permitted.</li>
-        </ol>
-
-        <div class="hd-foot">
-          <div class="hd-sign"><div class="line">Issued by — IT Department, ${fmtDate(rec.date)}</div></div>
-          <div class="hd-sign"><div class="line">Received by — ${escapeHtml(rec.employee)}</div></div>
-          <div class="hd-qr">
-            <div id="handoverQrHolder"></div>
-            <div class="cap">${escapeHtml(a.tag)}</div>
-          </div>
+        <div class="hd-title">
+          <h2>ASSET HANDOVER DOCUMENT</h2>
+          <div class="hd-ref">Ref: ${escapeHtml(refNo)} &middot; ${fmtDate(rec.date)}</div>
         </div>
-      </div>`;
+      </div>
 
-    renderQrInto(document.getElementById('handoverQrHolder'), qrTextForAsset(a), 74);
-    window.print();
+      <h4>Asset details</h4>
+      <table>
+        <tr><td class="k">Asset tag</td><td class="v">${escapeHtml(a.tag)}</td></tr>
+        <tr><td class="k">Name / model</td><td class="v">${escapeHtml(a.name)}</td></tr>
+        <tr><td class="k">Category</td><td class="v">${escapeHtml(a.category)}</td></tr>
+        <tr><td class="k">Serial number</td><td class="v">${escapeHtml(a.serial || '—')}</td></tr>
+        <tr><td class="k">Warranty / AMC ends</td><td class="v">${fmtDate(a.warranty_end)}</td></tr>
+      </table>
+
+      <h4>Issued to</h4>
+      <table>
+        <tr><td class="k">Employee name</td><td class="v">${escapeHtml(rec.employee)}</td></tr>
+        <tr><td class="k">Department</td><td class="v">${escapeHtml(rec.dept)}</td></tr>
+        <tr><td class="k">Date of issue</td><td class="v">${fmtDate(rec.date)}</td></tr>
+        <tr><td class="k">Status</td><td class="v">${rec.returned_date ? 'Returned on ' + fmtDate(rec.returned_date) : 'Currently in use'}</td></tr>
+      </table>
+
+      <h4>Terms &amp; conditions</h4>
+      <ol>
+        <li>The employee acknowledges receipt of the above asset in good working condition, complete with any accessories issued alongside it.</li>
+        <li>The asset remains the property of ${escapeHtml(settings.companyName || 'the company')} and is issued solely for official use.</li>
+        <li>The employee is responsible for the reasonable care, security, and safekeeping of the asset for the duration of use.</li>
+        <li>Any damage, loss, or malfunction must be reported promptly to the IT department.</li>
+        <li>The asset, along with all accessories, must be returned to the IT department upon request or on separation from the company.</li>
+        <li>Unauthorized repair, modification, or transfer of the asset to another individual is not permitted.</li>
+      </ol>
+
+      <div class="hd-foot">
+        <div class="hd-sign"><div class="line">Issued by — IT Department, ${fmtDate(rec.date)}</div></div>
+        <div class="hd-sign"><div class="line">Received by — ${escapeHtml(rec.employee)}</div></div>
+        <div class="hd-qr">
+          <div id="handoverQrHolder"></div>
+          <div class="cap">${escapeHtml(a.tag)}</div>
+        </div>
+      </div>
+    </div>`;
+
+  renderQrInto(document.getElementById('handoverQrHolder'), qrTextForAsset(a), 74);
+  window.print();
+}
+
+/* ============================================================
+   MAINTENANCE
+   ============================================================ */
+document.getElementById('maintDate').value = todayStr();
+
+function refreshMaintSelect(){
+  maintEligibleAssets = assets.filter(a => a.status !== 'Retired' && !openMaintenanceFor(a.id));
+  const search = document.getElementById('maintAssetSearch');
+  const hidden = document.getElementById('maintAssetSelect');
+  const btn = document.getElementById('maintSaveBtn');
+  if(maintEligibleAssets.length === 0){
+    maintPicker.reset();
+    search.placeholder = 'No assets available to log';
+    search.disabled = true;
+    btn.disabled = true;
+  } else {
+    search.disabled = false;
+    btn.disabled = false;
+    search.placeholder = 'Search asset by tag or name…';
+    if(hidden.value && !maintEligibleAssets.find(a=>a.id===hidden.value)) maintPicker.reset();
   }
+}
 
-  /* ============================================================
-     MAINTENANCE
-     ============================================================ */
-  document.getElementById('maintDate').value = todayStr();
+document.getElementById('maintSaveBtn').addEventListener('click', async (e)=>{
+  const assetId = document.getElementById('maintAssetSelect').value;
+  const date = document.getElementById('maintDate').value || todayStr();
+  const issue = document.getElementById('maintIssue').value.trim();
+  const errEl = document.getElementById('maintFormError');
 
-  function refreshMaintSelect(){
-    maintEligibleAssets = assets.filter(a => a.status !== 'Retired' && !openMaintenanceFor(a.id));
-    const search = document.getElementById('maintAssetSearch');
-    const hidden = document.getElementById('maintAssetSelect');
-    const btn = document.getElementById('maintSaveBtn');
-    if(maintEligibleAssets.length === 0){
-      maintPicker.reset();
-      search.placeholder = 'No assets available to log';
-      search.disabled = true;
-      btn.disabled = true;
-    } else {
-      search.disabled = false;
-      btn.disabled = false;
-      search.placeholder = 'Search asset by tag or name…';
-      if(hidden.value && !maintEligibleAssets.find(a=>a.id===hidden.value)) maintPicker.reset();
-    }
-  }
+  if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
+  if(!issue){ errEl.textContent = 'Please describe the issue.'; errEl.style.display='block'; return; }
+  errEl.style.display = 'none';
 
-  document.getElementById('maintSaveBtn').addEventListener('click', ()=>{
-    const assetId = document.getElementById('maintAssetSelect').value;
-    const date = document.getElementById('maintDate').value || todayStr();
-    const issue = document.getElementById('maintIssue').value.trim();
-    const errEl = document.getElementById('maintFormError');
-
-    if(!assetId){ errEl.textContent = 'No asset selected.'; errEl.style.display='block'; return; }
-    if(!issue){ errEl.textContent = 'Please describe the issue.'; errEl.style.display='block'; return; }
-    errEl.style.display = 'none';
-
-    maintenance.push({ id: uid(), assetId, date, issue, status:'Open', resolvedDate:null });
-    const a = getAsset(assetId);
-    if(a) a.status = 'Under Repair';
-    persistAll();
+  setBtnLoading(e.currentTarget, true);
+  try{
+    const { error: e1 } = await supabase.from('itam_maintenance').insert({ asset_id:assetId, date, issue, status:'Open', resolved_date:null });
+    if(e1) throw e1;
+    const { error: e2 } = await supabase.from('itam_assets').update({ status:'Under Repair' }).eq('id', assetId);
+    if(e2) throw e2;
+    await refreshAndRender();
     document.getElementById('maintIssue').value = '';
-    renderAll();
     toast('Issue logged');
-  });
+  }catch(err){ console.error(err); errEl.textContent = 'Could not log issue: ' + err.message; errEl.style.display = 'block'; }
+  setBtnLoading(e.currentTarget, false);
+});
 
-  function renderMaintenance(){
-    const open = maintenance.filter(m=>m.status==='Open').sort((a,b)=> new Date(a.date)-new Date(b.date));
-    document.getElementById('maintOpenList').innerHTML = open.length === 0
-      ? `<div class="empty-state"><span class="ic">✅</span><div class="en">No open issues</div></div>`
-      : open.map(m=>{
-          const a = getAsset(m.assetId);
-          return `<div class="item-row">
-            <div class="info">
-              <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
-              <div class="meta">Reported ${fmtDate(m.date)}: ${escapeHtml(m.issue)}</div>
-            </div>
-            <button class="btn ghost sm" data-resolve="${m.id}">Mark resolved</button>
-          </div>`;
-        }).join('');
+function renderMaintenance(){
+  const open = maintenance.filter(m=>m.status==='Open').sort((a,b)=> new Date(a.date)-new Date(b.date));
+  document.getElementById('maintOpenList').innerHTML = open.length === 0
+    ? `<div class="empty-state"><span class="ic">✅</span><div class="en">No open issues</div></div>`
+    : open.map(m=>{
+        const a = getAsset(m.asset_id);
+        return `<div class="item-row">
+          <div class="info">
+            <div class="name">${a ? `<span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}` : 'Unknown asset'}</div>
+            <div class="meta">Reported ${fmtDate(m.date)}: ${escapeHtml(m.issue)}</div>
+          </div>
+          <button class="btn ghost sm" data-resolve="${m.id}">Mark resolved</button>
+        </div>`;
+      }).join('');
 
-    const resolved = maintenance.filter(m=>m.status==='Resolved').sort((a,b)=> new Date(b.resolvedDate) - new Date(a.resolvedDate));
-    document.getElementById('maintResolvedList').innerHTML = resolved.length === 0
-      ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No resolved issues yet</div></div>`
-      : resolved.slice(0,50).map(m=>{
-          const a = getAsset(m.assetId);
-          return `<div class="item-row">
-            <div class="info">
-              <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'}: ${escapeHtml(m.issue)}</div>
-              <div class="meta">Reported ${fmtDate(m.date)} &middot; resolved ${fmtDate(m.resolvedDate)}</div>
-            </div>
-          </div>`;
-        }).join('');
-  }
+  const resolved = maintenance.filter(m=>m.status==='Resolved').sort((a,b)=> new Date(b.resolved_date) - new Date(a.resolved_date));
+  document.getElementById('maintResolvedList').innerHTML = resolved.length === 0
+    ? `<div class="empty-state"><span class="ic">🗂️</span><div class="en">No resolved issues yet</div></div>`
+    : resolved.slice(0,50).map(m=>{
+        const a = getAsset(m.asset_id);
+        return `<div class="item-row">
+          <div class="info">
+            <div class="name" style="font-size:14px;">${a ? escapeHtml(a.tag) : '—'}: ${escapeHtml(m.issue)}</div>
+            <div class="meta">Reported ${fmtDate(m.date)} &middot; resolved ${fmtDate(m.resolved_date)}</div>
+          </div>
+        </div>`;
+      }).join('');
+}
 
-  document.getElementById('maintOpenList').addEventListener('click', (e)=>{
-    const btn = e.target.closest('[data-resolve]');
-    if(!btn) return;
-    const m = maintenance.find(x=>x.id === btn.dataset.resolve);
-    if(!m) return;
-    m.status = 'Resolved';
-    m.resolvedDate = todayStr();
-    const a = getAsset(m.assetId);
+document.getElementById('maintOpenList').addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-resolve]');
+  if(!btn) return;
+  const m = maintenance.find(x=>x.id === btn.dataset.resolve);
+  if(!m) return;
+  try{
+    const { error: e1 } = await supabase.from('itam_maintenance').update({ status:'Resolved', resolved_date: todayStr() }).eq('id', m.id);
+    if(e1) throw e1;
+    const a = getAsset(m.asset_id);
     if(a){
       const active = activeAssignmentFor(a.id);
-      a.status = active ? 'In Use' : 'Available';
+      const { error: e2 } = await supabase.from('itam_assets').update({ status: active ? 'In Use' : 'Available' }).eq('id', a.id);
+      if(e2) throw e2;
     }
-    persistAll();
-    renderAll();
+    await refreshAndRender();
     toast('Issue marked resolved');
-  });
+  }catch(err){ console.error(err); toast('Could not update: ' + err.message); }
+});
 
-  /* ============================================================
-     WARRANTY
-     ============================================================ */
-  function renderWarranty(){
-    const el = document.getElementById('warrantyList');
-    const withDates = assets.filter(a => a.warrantyEnd);
-    if(withDates.length === 0){
-      el.innerHTML = `<div class="empty-state"><span class="ic">🛡️</span><div class="en">No warranty/AMC dates recorded yet — add them from the Assets tab</div></div>`;
-      return;
-    }
-    const sorted = [...withDates].sort((a,b)=> new Date(a.warrantyEnd) - new Date(b.warrantyEnd));
-    el.innerHTML = sorted.map(a=>{
-      const d = daysUntil(a.warrantyEnd);
-      let pill = `<span class="pill">${d} day${Math.abs(d)===1?'':'s'} left</span>`;
-      if(d < 0) pill = `<span class="pill bad">Expired ${fmtDate(a.warrantyEnd)}</span>`;
-      else if(d <= 30) pill = `<span class="pill warn">${d} day${d===1?'':'s'} left</span>`;
-      return `<div class="item-row">
-        <div class="info">
-          <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
-          <div class="meta">${escapeHtml(a.category)} &middot; ends ${fmtDate(a.warrantyEnd)}</div>
-        </div>
-        ${pill}
-      </div>`;
-    }).join('');
+/* ============================================================
+   WARRANTY
+   ============================================================ */
+function renderWarranty(){
+  const el = document.getElementById('warrantyList');
+  const withDates = assets.filter(a => a.warranty_end);
+  if(withDates.length === 0){
+    el.innerHTML = `<div class="empty-state"><span class="ic">🛡️</span><div class="en">No warranty/AMC dates recorded yet — add them from the Assets tab</div></div>`;
+    return;
   }
+  const sorted = [...withDates].sort((a,b)=> new Date(a.warranty_end) - new Date(b.warranty_end));
+  el.innerHTML = sorted.map(a=>{
+    const d = daysUntil(a.warranty_end);
+    let pill = `<span class="pill">${d} day${Math.abs(d)===1?'':'s'} left</span>`;
+    if(d < 0) pill = `<span class="pill bad">Expired ${fmtDate(a.warranty_end)}</span>`;
+    else if(d <= 30) pill = `<span class="pill warn">${d} day${d===1?'':'s'} left</span>`;
+    return `<div class="item-row">
+      <div class="info">
+        <div class="name"><span class="asset-tag">${escapeHtml(a.tag)}</span> ${escapeHtml(a.name)}</div>
+        <div class="meta">${escapeHtml(a.category)} &middot; ends ${fmtDate(a.warranty_end)}</div>
+      </div>
+      ${pill}
+    </div>`;
+  }).join('');
+}
 
-  /* ============================================================
-     DASHBOARD
-     ============================================================ */
-  function renderDashboard(){
-    const inUse = assets.filter(a=>a.status==='In Use').length;
-    const underRepair = assets.filter(a=>a.status==='Under Repair').length;
-    const expiringSoon = assets.filter(a=>{ const d = daysUntil(a.warrantyEnd); return d !== null && d <= 30; }).length;
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  const inUse = assets.filter(a=>a.status==='In Use').length;
+  const underRepair = assets.filter(a=>a.status==='Under Repair').length;
+  const expiringSoon = assets.filter(a=>{ const d = daysUntil(a.warranty_end); return d !== null && d <= 30; }).length;
 
-    document.getElementById('dashboardStats').innerHTML = `
-      <div class="card stat-card"><div class="num">${assets.length}</div><div class="lbl">Total assets</div></div>
-      <div class="card stat-card"><div class="num">${inUse}</div><div class="lbl">In use</div></div>
-      <div class="card stat-card"><div class="num" style="${underRepair?'color:var(--warn)':''}">${underRepair}</div><div class="lbl">Under repair</div></div>
-      <div class="card stat-card"><div class="num" style="${expiringSoon?'color:var(--bad)':''}">${expiringSoon}</div><div class="lbl">Warranty expiring</div></div>
-    `;
+  document.getElementById('dashboardStats').innerHTML = `
+    <div class="card stat-card"><div class="num">${assets.length}</div><div class="lbl">Total assets</div></div>
+    <div class="card stat-card"><div class="num">${inUse}</div><div class="lbl">In use</div></div>
+    <div class="card stat-card"><div class="num" style="${underRepair?'color:var(--warn)':''}">${underRepair}</div><div class="lbl">Under repair</div></div>
+    <div class="card stat-card"><div class="num" style="${expiringSoon?'color:var(--bad)':''}">${expiringSoon}</div><div class="lbl">Warranty expiring</div></div>
+  `;
 
-    const warrEl = document.getElementById('dashboardWarranty');
-    const soon = assets.filter(a=>{ const d = daysUntil(a.warrantyEnd); return d !== null && d <= 30; })
-                        .sort((a,b)=> new Date(a.warrantyEnd) - new Date(b.warrantyEnd));
-    warrEl.innerHTML = soon.length === 0
-      ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">Nothing expiring soon</div></div>`
-      : soon.slice(0,6).map(a=>{
-          const d = daysUntil(a.warrantyEnd);
-          return `<div class="item-row"><div class="info"><div class="name">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</div></div>${d<0?`<span class="pill bad">Expired</span>`:`<span class="pill warn">${d}d left</span>`}</div>`;
-        }).join('');
+  const warrEl = document.getElementById('dashboardWarranty');
+  const soon = assets.filter(a=>{ const d = daysUntil(a.warranty_end); return d !== null && d <= 30; })
+                      .sort((a,b)=> new Date(a.warranty_end) - new Date(b.warranty_end));
+  warrEl.innerHTML = soon.length === 0
+    ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">Nothing expiring soon</div></div>`
+    : soon.slice(0,6).map(a=>{
+        const d = daysUntil(a.warranty_end);
+        return `<div class="item-row"><div class="info"><div class="name">${escapeHtml(a.tag)} — ${escapeHtml(a.name)}</div></div>${d<0?`<span class="pill bad">Expired</span>`:`<span class="pill warn">${d}d left</span>`}</div>`;
+      }).join('');
 
-    const maintEl = document.getElementById('dashboardMaintenance');
-    const open = maintenance.filter(m=>m.status==='Open');
-    maintEl.innerHTML = open.length === 0
-      ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">No open maintenance issues</div></div>`
-      : open.slice(0,6).map(m=>{
-          const a = getAsset(m.assetId);
-          return `<div class="item-row"><div class="info"><div class="name">${a?escapeHtml(a.tag):'—'} — ${escapeHtml(m.issue)}</div><div class="meta">Since ${fmtDate(m.date)}</div></div></div>`;
-        }).join('');
-  }
+  const maintEl = document.getElementById('dashboardMaintenance');
+  const open = maintenance.filter(m=>m.status==='Open');
+  maintEl.innerHTML = open.length === 0
+    ? `<div class="empty-state" style="padding:20px;"><span class="ic">✅</span><div class="en">No open maintenance issues</div></div>`
+    : open.slice(0,6).map(m=>{
+        const a = getAsset(m.asset_id);
+        return `<div class="item-row"><div class="info"><div class="name">${a?escapeHtml(a.tag):'—'} — ${escapeHtml(m.issue)}</div><div class="meta">Since ${fmtDate(m.date)}</div></div></div>`;
+      }).join('');
+}
 
-  /* ============================================================
-     RENDER ALL
-     ============================================================ */
-  function renderAll(){
-    renderDashboard();
-    renderAssets();
-    refreshAssignSelect();
-    renderAssignments();
-    refreshMaintSelect();
-    renderMaintenance();
-    renderWarranty();
-  }
+/* ============================================================
+   RENDER ALL
+   ============================================================ */
+function renderAll(){
+  renderDashboard();
+  renderAssets();
+  refreshAssignSelect();
+  renderAssignments();
+  refreshMaintSelect();
+  renderMaintenance();
+  renderWarranty();
+}
 
-  renderHeader();
-  renderAll();
-
-})();
+initApp();
 </script>
 </body>
 </html>
